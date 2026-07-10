@@ -45,6 +45,16 @@ export const joinLeagueSchema = z.object({
 });
 export type JoinLeagueInput = z.infer<typeof joinLeagueSchema>;
 
+export const updateLeagueSchema = z
+  .object({
+    name: z.string().min(1).max(50).optional(),
+    maxMembers: z.number().int().min(2).max(500).optional(),
+  })
+  .refine((data) => data.name !== undefined || data.maxMembers !== undefined, {
+    message: "Provide at least one field to update",
+  });
+export type UpdateLeagueInput = z.infer<typeof updateLeagueSchema>;
+
 export const submitPickSchema = z.object({
   teamId: z.string().uuid(),
 });

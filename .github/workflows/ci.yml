@@ -25,6 +25,18 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @survivor/api prisma:generate
 
+      - name: Generate Expo Router typed routes
+        # `expo export` does NOT generate .expo/types/router.d.ts (only the
+        # `expo start` dev server's Metro watcher does), and that file is
+        # gitignored, so a fresh checkout has no typed-routes declarations
+        # for `pnpm typecheck` to see. Boot the dev server just long enough
+        # to bundle once, then stop it.
+        working-directory: apps/mobile
+        run: |
+          npx expo start --web --port 8090 &
+          npx wait-on http://localhost:8090 --timeout 60000
+          kill %1
+
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

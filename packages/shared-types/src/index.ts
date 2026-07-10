@@ -1,41 +1,19 @@
-// Enums mirror the Prisma schema (apps/api/prisma/schema.prisma) exactly.
-// Keep both in sync manually — Prisma enums are the source of truth for the DB,
-// these are what the mobile app and any non-Prisma code import.
+// String-literal unions (not TS enums) mirroring the Prisma schema
+// (apps/api/prisma/schema.prisma) exactly. A plain TS `enum` here would be a
+// nominally distinct type from Prisma's generated enum of the same name, so
+// assigning a Prisma query result's status field to these types would need a
+// cast everywhere; literal unions are structurally compatible instead.
+// Keep both in sync manually — Prisma is the source of truth for the DB.
 
-export enum MatchdayType {
-  GROUP = "GROUP",
-  KNOCKOUT_HOME = "KNOCKOUT_HOME",
-  KNOCKOUT_AWAY = "KNOCKOUT_AWAY",
-  FINAL = "FINAL",
-}
+export type MatchdayType = "GROUP" | "KNOCKOUT_HOME" | "KNOCKOUT_AWAY" | "FINAL";
 
-export enum FixtureStatus {
-  SCHEDULED = "SCHEDULED",
-  LIVE = "LIVE",
-  FINISHED = "FINISHED",
-  POSTPONED = "POSTPONED",
-  CANCELLED = "CANCELLED",
-}
+export type FixtureStatus = "SCHEDULED" | "LIVE" | "FINISHED" | "POSTPONED" | "CANCELLED";
 
-export enum FixtureResult {
-  HOME_WIN = "HOME_WIN",
-  AWAY_WIN = "AWAY_WIN",
-  DRAW = "DRAW",
-}
+export type FixtureResult = "HOME_WIN" | "AWAY_WIN" | "DRAW";
 
-export enum MembershipStatus {
-  ACTIVE = "ACTIVE",
-  ELIMINATED = "ELIMINATED",
-  LEFT = "LEFT",
-}
+export type MembershipStatus = "ACTIVE" | "ELIMINATED" | "LEFT";
 
-export enum PickOutcome {
-  PENDING = "PENDING",
-  WIN = "WIN",
-  DRAW_FORGIVEN = "DRAW_FORGIVEN",
-  DRAW_ELIMINATED = "DRAW_ELIMINATED",
-  LOSS = "LOSS",
-}
+export type PickOutcome = "PENDING" | "WIN" | "DRAW_FORGIVEN" | "DRAW_ELIMINATED" | "LOSS";
 
 export interface AuthUser {
   id: string;
@@ -49,6 +27,51 @@ export interface AuthTokensResponse {
   accessToken: string;
   refreshToken: string;
   user: AuthUser;
+}
+
+export interface SeasonSummary {
+  id: string;
+  name: string;
+  year: number;
+}
+
+export interface LeagueMemberSummary {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  status: MembershipStatus;
+  isCommissioner: boolean;
+  joinedAt: string; // ISO 8601
+}
+
+/** Response shape for one entry of GET /leagues/mine */
+export interface LeagueSummary {
+  id: string;
+  name: string;
+  inviteCode: string;
+  maxMembers: number;
+  memberCount: number;
+  commissionerId: string;
+  season: SeasonSummary;
+  myStatus: MembershipStatus;
+}
+
+/** Response shape for GET /leagues/:id */
+export interface LeagueDetail {
+  id: string;
+  name: string;
+  inviteCode: string;
+  maxMembers: number;
+  createdAt: string; // ISO 8601
+  season: SeasonSummary;
+  commissionerId: string;
+  members: LeagueMemberSummary[];
+}
+
+/** Response shape for POST /leagues/:id/invite-link */
+export interface InviteLinkResponse {
+  inviteCode: string;
+  url: string;
 }
 
 export interface TeamSummary {
