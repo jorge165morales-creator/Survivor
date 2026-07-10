@@ -60,6 +60,18 @@ export const submitPickSchema = z.object({
 });
 export type SubmitPickInput = z.infer<typeof submitPickSchema>;
 
+export const createFixtureSchema = z
+  .object({
+    matchdayId: z.string().uuid(),
+    homeTeamId: z.string().uuid(),
+    awayTeamId: z.string().uuid(),
+    kickoffAt: z.string().datetime(),
+  })
+  .refine((data) => data.homeTeamId !== data.awayTeamId, {
+    message: "homeTeamId and awayTeamId must differ",
+  });
+export type CreateFixtureInput = z.infer<typeof createFixtureSchema>;
+
 export const adminFixtureOverrideSchema = z.object({
   homeScore: z.number().int().min(0),
   awayScore: z.number().int().min(0),

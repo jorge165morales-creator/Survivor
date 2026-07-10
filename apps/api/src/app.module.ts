@@ -6,6 +6,11 @@ import { UsersModule } from "./users/users.module";
 import { AuthModule } from "./auth/auth.module";
 import { LeaguesModule } from "./leagues/leagues.module";
 import { SeasonsModule } from "./seasons/seasons.module";
+import { FixturesModule } from "./fixtures/fixtures.module";
+import { PicksModule } from "./picks/picks.module";
+import { StandingsModule } from "./standings/standings.module";
+import { GameEngineModule } from "./game-engine/game-engine.module";
+import { AdminModule } from "./admin/admin.module";
 import { AppController } from "./app.controller";
 
 @Module({
@@ -17,6 +22,11 @@ import { AppController } from "./app.controller";
     AuthModule,
     LeaguesModule,
     SeasonsModule,
+    FixturesModule,
+    GameEngineModule,
+    PicksModule,
+    StandingsModule,
+    AdminModule,
   ],
   controllers: [AppController],
 })

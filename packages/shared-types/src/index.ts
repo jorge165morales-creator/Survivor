@@ -104,6 +104,33 @@ export interface PickOptionsResponse {
   currentPick: { teamId: string; submittedAt: string } | null;
 }
 
+export interface PickHistoryEntry {
+  matchdaySequence: number;
+  matchdayType: MatchdayType;
+  roundLabel: string;
+  team: TeamSummary;
+  outcome: PickOutcome;
+  submittedAt: string; // ISO 8601
+}
+
+/** Response shape for GET /leagues/:leagueId/picks/me */
+export interface PickHistoryResponse {
+  entries: PickHistoryEntry[];
+}
+
+/** Response shape for POST /admin/fixtures and POST /admin/fixtures/:id/override */
+export interface AdminFixtureDetail {
+  id: string;
+  matchdayId: string;
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+  kickoffAt: string; // ISO 8601
+  status: FixtureStatus;
+  homeScore: number | null;
+  awayScore: number | null;
+  result: FixtureResult | null;
+}
+
 export interface StandingsEntry {
   userId: string;
   displayName: string;

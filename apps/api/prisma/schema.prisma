@@ -84,6 +84,7 @@ model Matchday {
   lockAt     DateTime
   fixtures   Fixture[]
   picks      Pick[]
+  eliminationsHere LeagueMembership[] @relation("EliminatedAtMatchday")
 
   @@unique([seasonId, sequence])
   @@index([seasonId, lockAt])
@@ -176,6 +177,7 @@ model LeagueMembership {
   user                   User              @relation(fields: [userId], references: [id])
   status                 MembershipStatus  @default(ACTIVE)
   eliminatedAtMatchdayId String?
+  eliminatedAtMatchday   Matchday?         @relation("EliminatedAtMatchday", fields: [eliminatedAtMatchdayId], references: [id])
   tieForgivenessUsed     Boolean           @default(false)
   joinedAt               DateTime          @default(now())
 
