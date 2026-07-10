@@ -18,6 +18,22 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const appleSignInSchema = z.object({
+  identityToken: z.string().min(1),
+  displayName: z.string().min(1).max(50).optional(),
+});
+export type AppleSignInInput = z.infer<typeof appleSignInSchema>;
+
+export const googleSignInSchema = z.object({
+  idToken: z.string().min(1),
+});
+export type GoogleSignInInput = z.infer<typeof googleSignInSchema>;
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
 export const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   seasonId: z.string().uuid(),

@@ -37,6 +37,20 @@ export enum PickOutcome {
   LOSS = "LOSS",
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+/** Response shape for register/login/apple/google/refresh */
+export interface AuthTokensResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUser;
+}
+
 export interface TeamSummary {
   id: string;
   name: string;
