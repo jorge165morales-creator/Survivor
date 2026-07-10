@@ -1,0 +1,232 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- Identity ----------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  appleSub     String?  @unique
+  googleSub    String?  @unique
+  displayName  String
+  avatarUrl    String?
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leagueMemberships LeagueMembership[]
+  picks             Pick[]
+  ownedLeagues      League[]         @relation("LeagueCommissioner")
+  entitlement       UserEntitlement?
+  pushTokens        PushToken[]
+
+  @@index([email])
+}
+
+model UserEntitlement {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id])
+  revenueCatUserId String    @unique
+  activeProductId  String?
+  extraLeagueSlots Int       @default(0)
+  isPro            Boolean   @default(false)
+  expiresAt        DateTime?
+  updatedAt        DateTime  @updatedAt
+}
+
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Competition data (shared across all leagues) ----------
+
+model Season {
+  id        String     @id @default(uuid())
+  name      String
+  year      Int
+  isActive  Boolean    @default(true)
+  matchdays Matchday[]
+  teams     Team[]     @relation("SeasonTeams")
+  leagues   League[]
+
+  @@index([isActive])
+}
+
+enum MatchdayType {
+  GROUP
+  KNOCKOUT_HOME
+  KNOCKOUT_AWAY
+  FINAL
+}
+
+model Matchday {
+  id         String       @id @default(uuid())
+  seasonId   String
+  season     Season       @relation(fields: [seasonId], references: [id])
+  sequence   Int
+  type       MatchdayType
+  roundLabel String
+  lockAt     DateTime
+  fixtures   Fixture[]
+  picks      Pick[]
+
+  @@unique([seasonId, sequence])
+  @@index([seasonId, lockAt])
+}
+
+model Team {
+  id         String   @id @default(uuid())
+  name       String
+  shortName  String
+  crestUrl   String?
+  externalId String   @unique
+  seasons    Season[] @relation("SeasonTeams")
+
+  homeFixtures Fixture[] @relation("HomeTeam")
+  awayFixtures Fixture[] @relation("AwayTeam")
+  picks        Pick[]
+  usedTeams    UsedTeam[]
+}
+
+enum FixtureStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+enum FixtureResult {
+  HOME_WIN
+  AWAY_WIN
+  DRAW
+}
+
+model Fixture {
+  id                 String         @id @default(uuid())
+  matchdayId         String
+  matchday           Matchday       @relation(fields: [matchdayId], references: [id])
+  externalId         String         @unique
+  homeTeamId         String
+  homeTeam           Team           @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId         String
+  awayTeam           Team           @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  kickoffAt          DateTime
+  status             FixtureStatus  @default(SCHEDULED)
+  homeScore          Int?
+  awayScore          Int?
+  result             FixtureResult?
+  lastSyncedAt       DateTime?
+  correctedByAdminId String?
+  correctedAt        DateTime?
+
+  picks Pick[]
+
+  @@index([matchdayId])
+  @@index([status])
+}
+
+// ---------- Leagues (pools) ----------
+
+model League {
+  id             String    @id @default(uuid())
+  name           String
+  commissionerId String
+  commissioner   User      @relation("LeagueCommissioner", fields: [commissionerId], references: [id])
+  seasonId       String
+  season         Season    @relation(fields: [seasonId], references: [id])
+  inviteCode     String    @unique @default(cuid())
+  maxMembers     Int       @default(20)
+  createdAt      DateTime  @default(now())
+  archivedAt     DateTime?
+
+  memberships LeagueMembership[]
+  picks       Pick[]
+  usedTeams   UsedTeam[]
+
+  @@index([inviteCode])
+}
+
+enum MembershipStatus {
+  ACTIVE
+  ELIMINATED
+  LEFT
+}
+
+model LeagueMembership {
+  id                     String            @id @default(uuid())
+  leagueId               String
+  league                 League            @relation(fields: [leagueId], references: [id])
+  userId                 String
+  user                   User              @relation(fields: [userId], references: [id])
+  status                 MembershipStatus  @default(ACTIVE)
+  eliminatedAtMatchdayId String?
+  tieForgivenessUsed     Boolean           @default(false)
+  joinedAt               DateTime          @default(now())
+
+  @@unique([leagueId, userId])
+  @@index([leagueId, status])
+}
+
+// Per-user, per-league burned-team ledger. The unique constraint is what makes
+// team reuse impossible even under concurrent pick submissions (see
+// apps/api/src/game-engine and the plan's picks.controller notes).
+model UsedTeam {
+  id           String   @id @default(uuid())
+  leagueId     String
+  league       League   @relation(fields: [leagueId], references: [id])
+  userId       String
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id])
+  usedInPickId String   @unique
+  usedInPick   Pick     @relation(fields: [usedInPickId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([leagueId, userId, teamId])
+  @@index([leagueId, userId])
+}
+
+enum PickOutcome {
+  PENDING
+  WIN
+  DRAW_FORGIVEN
+  DRAW_ELIMINATED
+  LOSS
+}
+
+model Pick {
+  id          String      @id @default(uuid())
+  leagueId    String
+  league      League      @relation(fields: [leagueId], references: [id])
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  matchdayId  String
+  matchday    Matchday    @relation(fields: [matchdayId], references: [id])
+  teamId      String
+  team        Team        @relation(fields: [teamId], references: [id])
+  fixtureId   String?
+  fixture     Fixture?    @relation(fields: [fixtureId], references: [id])
+  outcome     PickOutcome @default(PENDING)
+  submittedAt DateTime    @default(now())
+  lockedAt    DateTime?
+  usedTeam    UsedTeam?
+
+  @@unique([leagueId, userId, matchdayId])
+  @@index([leagueId, matchdayId])
+  @@index([fixtureId])
+}

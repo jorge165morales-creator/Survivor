@@ -1,0 +1,9 @@
+/** @type {import('jest').Config} */
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  rootDir: "src",
+  testRegex: ".*\\.spec\\.ts$",
+  passWithNoTests: true,
+  moduleFileExtensions: ["js", "json", "ts"],
+};
