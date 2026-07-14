@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { PickHistoryEntry, PickOptionsResponse } from "@survivor/shared-types";
+import type { PickHistoryResponse, PickOptionsResponse } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { validatePick, type PickRejectionReason } from "../game-engine/pick-validation.service";
 
@@ -159,7 +159,7 @@ export class PicksService {
     }
   }
 
-  async getMyPicks(leagueId: string, userId: string): Promise<PickHistoryEntry[]> {
+  async getMyPicks(leagueId: string, userId: string): Promise<PickHistoryResponse> {
     await this.requireMembership(leagueId, userId);
 
     const picks = await this.prisma.pick.findMany({
@@ -168,13 +168,15 @@ export class PicksService {
       orderBy: { matchday: { sequence: "asc" } },
     });
 
-    return picks.map((p) => ({
-      matchdaySequence: p.matchday.sequence,
-      matchdayType: p.matchday.type,
-      roundLabel: p.matchday.roundLabel,
-      team: { id: p.team.id, name: p.team.name, shortName: p.team.shortName, crestUrl: p.team.crestUrl },
-      outcome: p.outcome,
-      submittedAt: p.submittedAt.toISOString(),
-    }));
+    return {
+      entries: picks.map((p) => ({
+        matchdaySequence: p.matchday.sequence,
+        matchdayType: p.matchday.type,
+        roundLabel: p.matchday.roundLabel,
+        team: { id: p.team.id, name: p.team.name, shortName: p.team.shortName, crestUrl: p.team.crestUrl },
+        outcome: p.outcome,
+        submittedAt: p.submittedAt.toISOString(),
+      })),
+    };
   }
 }

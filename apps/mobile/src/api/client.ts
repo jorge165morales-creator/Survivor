@@ -13,7 +13,11 @@ import type {
   InviteLinkResponse,
   LeagueDetail,
   LeagueSummary,
+  MatchdaySummary,
+  PickHistoryResponse,
+  PickOptionsResponse,
   SeasonSummary,
+  StandingsResponse,
 } from "@survivor/shared-types";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
@@ -49,6 +53,19 @@ async function post<TResponse>(path: string, body: unknown, accessToken?: string
 async function get<TResponse>(path: string, accessToken: string): Promise<TResponse> {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+async function put<TResponse>(path: string, body: unknown, accessToken: string): Promise<TResponse> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
@@ -111,4 +128,24 @@ export const leaguesApi = {
 
 export const seasonsApi = {
   active: (accessToken: string) => get<SeasonSummary>("/seasons/active", accessToken),
+  matchdays: (seasonId: string, accessToken: string) =>
+    get<MatchdaySummary[]>(`/seasons/${seasonId}/matchdays`, accessToken),
+};
+
+export const picksApi = {
+  pickOptions: (leagueId: string, matchdayId: string, accessToken: string) =>
+    get<PickOptionsResponse>(`/leagues/${leagueId}/matchdays/${matchdayId}/pick-options`, accessToken),
+  // Response body isn't used — callers re-fetch pick-options after a
+  // successful submit to get the canonical updated state.
+  submitPick: (leagueId: string, matchdayId: string, teamId: string, accessToken: string) =>
+    post<unknown>(`/leagues/${leagueId}/matchdays/${matchdayId}/picks`, { teamId }, accessToken),
+  changePick: (leagueId: string, matchdayId: string, teamId: string, accessToken: string) =>
+    put<unknown>(`/leagues/${leagueId}/matchdays/${matchdayId}/picks`, { teamId }, accessToken),
+  myPicks: (leagueId: string, accessToken: string) =>
+    get<PickHistoryResponse>(`/leagues/${leagueId}/picks/me`, accessToken),
+};
+
+export const standingsApi = {
+  get: (leagueId: string, accessToken: string) =>
+    get<StandingsResponse>(`/leagues/${leagueId}/standings`, accessToken),
 };

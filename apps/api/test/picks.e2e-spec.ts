@@ -256,7 +256,7 @@ describe("Picks + Survival (e2e)", () => {
       .get(`/api/v1/leagues/${leagueId}/picks/me`)
       .set("Authorization", `Bearer ${bToken}`)
       .expect(200);
-    expect(myPicks.body).toEqual([
+    expect(myPicks.body.entries).toEqual([
       expect.objectContaining({ matchdaySequence: 1, outcome: "DRAW_FORGIVEN" }),
     ]);
   });

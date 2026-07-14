@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/jwt-auth.guard";
 import { SeasonsService } from "./seasons.service";
 
@@ -10,5 +10,10 @@ export class SeasonsController {
   @Get("active")
   getActive() {
     return this.seasons.getActive();
+  }
+
+  @Get(":seasonId/matchdays")
+  getMatchdays(@Param("seasonId") seasonId: string) {
+    return this.seasons.getMatchdays(seasonId);
   }
 }

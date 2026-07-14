@@ -35,6 +35,15 @@ export interface SeasonSummary {
   year: number;
 }
 
+/** Response entry for GET /seasons/:seasonId/matchdays */
+export interface MatchdaySummary {
+  id: string;
+  sequence: number;
+  type: MatchdayType;
+  roundLabel: string;
+  lockAt: string; // ISO 8601
+}
+
 export interface LeagueMemberSummary {
   userId: string;
   displayName: string;

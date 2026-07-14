@@ -68,6 +68,7 @@ export default function LeagueDetailScreen() {
   }
 
   const isCommissioner = league?.commissionerId === session.user.id;
+  const myStatus = league?.members.find((m) => m.userId === session.user.id)?.status;
 
   return (
     <ThemedView style={styles.container}>
@@ -92,6 +93,30 @@ export default function LeagueDetailScreen() {
             <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
               {league.season.name} · Invite code: {league.inviteCode}
             </ThemedText>
+
+            <ThemedView style={styles.actionsRow}>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => router.push(`/leagues/${id}/pick`)}>
+                <ThemedText style={styles.actionButtonText}>Make Pick</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.actionButtonSecondary}
+                onPress={() => router.push(`/leagues/${id}/standings`)}>
+                <ThemedText style={styles.actionButtonSecondaryText}>Standings</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.actionButtonSecondary}
+                onPress={() => router.push(`/leagues/${id}/history`)}>
+                <ThemedText style={styles.actionButtonSecondaryText}>History</ThemedText>
+              </Pressable>
+            </ThemedView>
+
+            {myStatus === 'ELIMINATED' && (
+              <ThemedText type="small" style={styles.eliminatedBanner}>
+                You've been eliminated from this league.
+              </ThemedText>
+            )}
 
             <Pressable onPress={handleShare} style={styles.shareButton}>
               <ThemedText style={styles.shareButtonText}>Share Invite</ThemedText>
@@ -147,6 +172,33 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.five },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.two },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#208AEF',
+    borderRadius: 8,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  actionButtonText: { color: '#fff', fontWeight: '600' },
+  actionButtonSecondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#8888',
+    borderRadius: 8,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  actionButtonSecondaryText: { fontWeight: '600' },
+  eliminatedBanner: {
+    color: '#e5484d',
+    textAlign: 'center',
+    marginBottom: Spacing.two,
+  },
   shareButton: {
     backgroundColor: '#208AEF',
     borderRadius: 8,
