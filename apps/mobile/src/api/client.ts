@@ -31,15 +31,67 @@ export class ApiError extends Error {
   }
 }
 
-async function post<TResponse>(path: string, body: unknown, accessToken?: string): Promise<TResponse> {
+// Access tokens expire after 15 minutes (see apps/api/src/common/token.service.ts).
+// The request helpers below don't have access to React state, so
+// SessionProvider registers callbacks here to receive silently-refreshed
+// tokens (and to be told to sign out if the refresh token itself has
+// expired) — every call site just passes its snapshot of accessToken and
+// gets a transparent retry on a 401, without needing to know about refresh
+// at all.
+type SessionBridge = {
+  refreshToken: string | null;
+  onTokensRefreshed: (tokens: AuthTokensResponse) => void;
+  onRefreshFailed: () => void;
+};
+let sessionBridge: SessionBridge | null = null;
+let inFlightRefresh: Promise<string | null> | null = null;
+
+export function registerSessionBridge(bridge: SessionBridge | null) {
+  sessionBridge = bridge;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!sessionBridge?.refreshToken) return null;
+  if (!inFlightRefresh) {
+    inFlightRefresh = post<AuthTokensResponse>("/auth/refresh", { refreshToken: sessionBridge.refreshToken })
+      .then((tokens) => {
+        sessionBridge?.onTokensRefreshed(tokens);
+        return tokens.accessToken;
+      })
+      .catch(() => {
+        sessionBridge?.onRefreshFailed();
+        return null;
+      })
+      .finally(() => {
+        inFlightRefresh = null;
+      });
+  }
+  return inFlightRefresh;
+}
+
+async function request<TResponse>(
+  method: string,
+  path: string,
+  body: unknown | undefined,
+  accessToken: string | undefined,
+  isRetry = false,
+): Promise<TResponse> {
   const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
+    method,
     headers: {
-      "Content-Type": "application/json",
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
+
+  if (res.status === 401 && accessToken && !isRetry) {
+    const newAccessToken = await refreshAccessToken();
+    if (newAccessToken) {
+      return request<TResponse>(method, path, body, newAccessToken, true);
+    }
+  }
+
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
     throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
@@ -50,52 +102,24 @@ async function post<TResponse>(path: string, body: unknown, accessToken?: string
   return res.json();
 }
 
+async function post<TResponse>(path: string, body: unknown, accessToken?: string): Promise<TResponse> {
+  return request<TResponse>("POST", path, body, accessToken);
+}
+
 async function get<TResponse>(path: string, accessToken: string): Promise<TResponse> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
-  }
-  return res.json();
+  return request<TResponse>("GET", path, undefined, accessToken);
 }
 
 async function put<TResponse>(path: string, body: unknown, accessToken: string): Promise<TResponse> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
-  }
-  return res.json();
+  return request<TResponse>("PUT", path, body, accessToken);
 }
 
 async function patch<TResponse>(path: string, body: unknown, accessToken: string): Promise<TResponse> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
-  }
-  return res.json();
+  return request<TResponse>("PATCH", path, body, accessToken);
 }
 
 async function del(path: string, accessToken: string): Promise<void> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, payload.message ?? `Request failed with status ${res.status}`);
-  }
+  await request<void>("DELETE", path, undefined, accessToken);
 }
 
 export const authApi = {

@@ -1,5 +1,6 @@
-import { createContext, use, useCallback, type PropsWithChildren } from "react";
+import { createContext, use, useCallback, useEffect, type PropsWithChildren } from "react";
 import type { AuthTokensResponse, AuthUser } from "@survivor/shared-types";
+import { registerSessionBridge } from "@/api/client";
 import { useStorageState } from "./storage";
 
 interface Session {
@@ -42,6 +43,23 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const signOut = useCallback(() => {
     setSession(null);
   }, [setSession]);
+
+  // Lets the API client silently refresh an expired access token (and sign
+  // the user out if the refresh token itself has expired) without every
+  // call site needing to know about the refresh flow.
+  useEffect(() => {
+    if (!session) {
+      registerSessionBridge(null);
+      return;
+    }
+    registerSessionBridge({
+      refreshToken: session.refreshToken,
+      onTokensRefreshed: (tokens) => {
+        setSession({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user: tokens.user });
+      },
+      onRefreshFailed: () => setSession(null),
+    });
+  }, [session, setSession]);
 
   return (
     <SessionContext value={{ session: session ?? null, isLoading, signIn, signOut }}>
