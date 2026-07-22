@@ -175,7 +175,7 @@ export default function StandingsScreen() {
           </>
         )}
 
-        <Pressable onPress={() => router.push(`/leagues/${id}/rules`)} style={styles.rulesButton}>
+        <Pressable onPress={() => router.push('/rules')} style={styles.rulesButton}>
           <ThemedText type="linkPrimary">Rules</ThemedText>
         </Pressable>
 

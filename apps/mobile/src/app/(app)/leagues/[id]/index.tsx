@@ -128,9 +128,7 @@ export default function LeagueDetailScreen() {
               </Pressable>
             </ThemedView>
 
-            <Pressable
-              style={styles.rulesButton}
-              onPress={() => router.push(`/leagues/${id}/rules`)}>
+            <Pressable style={styles.rulesButton} onPress={() => router.push('/rules')}>
               <ThemedText type="linkPrimary">Rules</ThemedText>
             </Pressable>
 

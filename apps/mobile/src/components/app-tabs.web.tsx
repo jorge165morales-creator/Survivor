@@ -23,6 +23,9 @@ export default function AppTabs() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>Home</TabButton>
           </TabTrigger>
+          <TabTrigger name="rules" href="/rules" asChild>
+            <TabButton>Rules</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
       <TabSlot style={{ flex: 1 }} />

@@ -1,11 +1,9 @@
-import { useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing, MaxContentWidth } from '@/constants/theme';
-import { goBackOrHome } from '@/utils/navigation';
+import { BottomTabInset, Spacing, MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const RULES: { title: string; body: string }[] = [
@@ -28,16 +26,11 @@ const RULES: { title: string; body: string }[] = [
 ];
 
 export default function RulesScreen() {
-  useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable onPress={goBackOrHome} style={styles.backButton}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
-        </Pressable>
-
         <ThemedText type="title" style={styles.title}>
           Rules
         </ThemedText>
@@ -67,12 +60,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
     gap: Spacing.two,
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
+    paddingBottom: BottomTabInset,
   },
-  backButton: { paddingTop: Spacing.three },
   title: { textAlign: 'center', marginBottom: Spacing.one },
   scrollContent: { gap: Spacing.four, paddingBottom: Spacing.five },
   ruleRow: { flexDirection: 'row', gap: Spacing.three },
