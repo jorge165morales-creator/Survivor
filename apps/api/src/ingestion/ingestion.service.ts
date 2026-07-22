@@ -12,12 +12,9 @@ import type { ProviderFixture } from "./providers/sports-data.provider.interface
  * (admin-fixtures.service.ts) — one way results get applied, whether from a
  * live provider or a manual correction.
  *
- * What's NOT here yet: the scheduler (cron cadence, matchday-window
- * detection) and the mapping from a provider's "round" to our Matchday —
- * both need a real provider key to build against and test, which is still
- * an open decision (see the build plan's flagged open items). This service
- * is provider-agnostic and fully unit-tested against a fake provider in the
- * meantime.
+ * The polling cadence and kickoff-window logic live in
+ * ingestion-scheduler.service.ts; this service only knows how to apply one
+ * fixture update, so it's fully unit-tested against a fake provider.
  */
 @Injectable()
 export class IngestionService {

@@ -18,7 +18,7 @@ export class AdminFixturesController {
 
   @Post()
   create(@Body(new ZodValidationPipe(createFixtureSchema)) body: CreateFixtureInput) {
-    return this.adminFixtures.create(body.matchdayId, body.homeTeamId, body.awayTeamId, body.kickoffAt);
+    return this.adminFixtures.create(body.matchdayId, body.homeTeamId, body.awayTeamId, body.kickoffAt, body.externalId);
   }
 
   @Post(":id/override")

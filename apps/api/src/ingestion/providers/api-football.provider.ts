@@ -34,11 +34,10 @@ interface ApiFootballFixtureResponse {
 }
 
 /**
- * NOT wired into AppModule yet — this needs a SPORTS_DATA_API_KEY, which is
- * a real recurring-cost decision the user hasn't made (see the build plan's
- * "open items"). The mapping logic here is unit-tested against a sample
- * response shape, but the live HTTP integration itself is unverified until
- * there's a key to test against.
+ * Talks to API-Football's free plan (100 req/day, 10/min — see
+ * ingestion-scheduler.service.ts for how polling stays under that). The
+ * mapping logic here is unit-tested against a sample response shape; the
+ * live HTTP integration itself needs a real SPORTS_DATA_API_KEY to verify.
  */
 @Injectable()
 export class ApiFootballProvider implements SportsDataProvider {

@@ -18,6 +18,7 @@ export class AdminFixturesService {
     homeTeamId: string,
     awayTeamId: string,
     kickoffAt: string,
+    externalId?: string,
   ): Promise<AdminFixtureDetail> {
     const matchday = await this.prisma.matchday.findUnique({ where: { id: matchdayId } });
     if (!matchday) {
@@ -29,10 +30,12 @@ export class AdminFixturesService {
         homeTeamId,
         awayTeamId,
         kickoffAt: new Date(kickoffAt),
-        // Manually-created fixtures are prefixed to avoid ever colliding
-        // with a real provider's externalId once live ingestion (Phase 3
-        // continuation, pending a sports-data provider decision) is wired up.
-        externalId: `manual-${randomUUID()}`,
+        // Pass the real API-Football fixture id here so the live-ingestion
+        // poller (ingestion-scheduler.service.ts) picks this fixture up.
+        // Left unset, a manual- prefixed id is generated instead, which can
+        // never collide with a real provider id — this fixture then only
+        // gets results via the /override endpoint.
+        externalId: externalId ?? `manual-${randomUUID()}`,
         status: "SCHEDULED",
       },
       include: { homeTeam: true, awayTeam: true },
