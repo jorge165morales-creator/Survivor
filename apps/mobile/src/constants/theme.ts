@@ -7,41 +7,42 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// Brand gradient — the Instagram-style violet → pink → orange sweep used for
-// primary CTAs, the active tab pill, and hero accents. Same trio in both
-// themes on purpose: it's saturated enough to read on both a near-black and
-// a near-white surface, and a consistent gradient identity matters more here
-// than perfect per-theme tuning.
-export const BrandGradient = ['#7C3AED', '#EC4899', '#FB923C'] as const;
+// Brand gradient — Electric Blue into Cyan, straight from UEFA Champions
+// League's official 2024-27 brand palette (no purple/magenta — deliberately
+// avoiding anything that reads as pink). Same pair in both themes on
+// purpose: saturated enough to read on both a near-black and a near-white
+// surface, and a consistent gradient identity matters more here than
+// perfect per-theme tuning.
+export const BrandGradient = ['#0232FF', '#00EEFF'] as const;
 
 export const Colors = {
   light: {
-    text: '#15132A',
-    background: '#F8F7FC',
+    text: '#0B0E2E',
+    background: '#F5F6FF',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#EFE7FF',
-    textSecondary: '#6B7089',
-    primary: '#7C3AED',
-    primaryPressed: '#6425D0',
-    link: '#7C3AED',
+    backgroundSelected: '#E7E9FF',
+    textSecondary: '#5A5F86',
+    primary: '#0232FF',
+    primaryPressed: '#010056',
+    link: '#0232FF',
     success: '#16A34A',
     danger: '#E11D48',
     buyBack: '#D97706',
-    border: '#E7E2F5',
+    border: '#E1E4FA',
   },
   dark: {
     text: '#F5F6FC',
-    background: '#0B0E1A',
-    backgroundElement: '#161A2E',
-    backgroundSelected: '#262B4A',
-    textSecondary: '#9096B4',
-    primary: '#9F67FF',
-    primaryPressed: '#7C3AED',
-    link: '#B794FF',
+    background: '#05081F',
+    backgroundElement: '#10153E',
+    backgroundSelected: '#1B2260',
+    textSecondary: '#9099C4',
+    primary: '#3358FF',
+    primaryPressed: '#0232FF',
+    link: '#8C6BFF',
     success: '#22E584',
-    danger: '#FF4D6D',
-    buyBack: '#FFC53D',
-    border: '#262B47',
+    danger: '#FF0045',
+    buyBack: '#FFD300',
+    border: '#232B66',
   },
 } as const;
 

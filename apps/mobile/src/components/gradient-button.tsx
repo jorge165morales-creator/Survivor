@@ -10,7 +10,7 @@ type GradientButtonProps = Omit<PressableProps, 'style' | 'children'> & {
   style?: StyleProp<ViewStyle>;
 };
 
-/** The app's one primary-action look: the brand violet→pink→orange sweep. */
+/** The app's one primary-action look: the brand electric-blue→cyan sweep. */
 export function GradientButton({ children, isLoading = false, disabled, style, ...pressableProps }: GradientButtonProps) {
   const isDisabled = disabled || isLoading;
 
