@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import type { PickHistoryResponse, PickOptionsResponse } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { validatePick, type PickRejectionReason } from "../game-engine/pick-validation.service";
+import { RecomputeService } from "../game-engine/recompute.service";
 
 function rejectionToException(reason: PickRejectionReason): Error {
   switch (reason) {
@@ -23,7 +24,10 @@ function rejectionToException(reason: PickRejectionReason): Error {
 
 @Injectable()
 export class PicksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly recompute: RecomputeService,
+  ) {}
 
   private async requireMembership(leagueId: string, userId: string) {
     const membership = await this.prisma.leagueMembership.findUnique({
@@ -80,6 +84,17 @@ export class PicksService {
   async submitPick(leagueId: string, matchdayId: string, userId: string, teamId: string) {
     const membership = await this.requireMembership(leagueId, userId);
 
+    // Browsing (getPickOptions) is allowed while unpaid — "look at the
+    // teams" — but actually submitting a pick is the "enter the league"
+    // action a paymentRequired league gates on the commissioner's say-so.
+    const league = await this.prisma.league.findUniqueOrThrow({
+      where: { id: leagueId },
+      select: { paymentRequired: true },
+    });
+    if (league.paymentRequired && !membership.hasPaid) {
+      throw new ForbiddenException("Waiting for the commissioner to confirm your payment");
+    }
+
     const matchday = await this.prisma.matchday.findUnique({
       where: { id: matchdayId },
       include: { fixtures: true },
@@ -116,7 +131,7 @@ export class PicksService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const pick = await this.prisma.$transaction(async (tx) => {
         const pick = existingPick
           ? await tx.pick.update({
               where: { id: existingPick.id },
@@ -148,6 +163,15 @@ export class PicksService {
 
         return pick;
       });
+
+      // Usually a no-op (the picked fixture hasn't been played yet, so this
+      // just reconfirms PENDING) — but it's what lets a pick against an
+      // already-finished fixture (e.g. the historical test season, seeded
+      // fully resolved) resolve immediately instead of sitting PENDING
+      // forever with nothing left to trigger a recompute later.
+      await this.recompute.recomputeLeague(leagueId);
+
+      return pick;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         // The UsedTeam unique constraint is the concurrency backstop for the

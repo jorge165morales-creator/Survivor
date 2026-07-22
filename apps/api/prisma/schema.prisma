@@ -153,6 +153,17 @@ model League {
   season         Season    @relation(fields: [seasonId], references: [id])
   inviteCode     String    @unique @default(cuid())
   maxMembers     Int       @default(20)
+  // Whether the commissioner allows an eliminated member to be granted a
+  // one-time rejoin this season (see LeagueMembership.buyBackAvailable/Used).
+  // Any payment for this happens outside the app, between the commissioner
+  // and the member — the app only tracks whether it's been granted.
+  buyBackEnabled Boolean   @default(false)
+  // When true, a member who joins doesn't actually participate (isn't
+  // subject to elimination, doesn't appear in standings) until the
+  // commissioner marks them LeagueMembership.hasPaid — see recompute.service.ts
+  // for how an unpaid member's early matchdays are skipped rather than
+  // counted as missed picks once they are eventually marked paid.
+  paymentRequired Boolean   @default(false)
   createdAt      DateTime  @default(now())
   archivedAt     DateTime?
 
@@ -178,7 +189,22 @@ model LeagueMembership {
   status                 MembershipStatus  @default(ACTIVE)
   eliminatedAtMatchdayId String?
   eliminatedAtMatchday   Matchday?         @relation("EliminatedAtMatchday", fields: [eliminatedAtMatchdayId], references: [id])
-  tieForgivenessUsed     Boolean           @default(false)
+  // Set true the moment the commissioner grants this member a buy-back.
+  // buyBackUsed is set true once recompute has actually consumed it to
+  // forgive one elimination — kept separate from buyBackAvailable because
+  // recompute replays the whole season from scratch every run and must
+  // durably remember a one-time grant has already been spent, independent
+  // of which historical matchday triggered it.
+  buyBackAvailable       Boolean           @default(false)
+  buyBackUsed            Boolean           @default(false)
+  // Only meaningful when League.paymentRequired is true. hasPaid gates
+  // whether this member is actually subject to the game engine at all yet
+  // (see recompute.service.ts); paidAt is the moment they became eligible,
+  // used the same way joinedAt is for a non-payment-gated league so a member
+  // marked paid mid-season isn't penalized for matchdays that locked before
+  // they were allowed to participate.
+  hasPaid                Boolean           @default(false)
+  paidAt                 DateTime?
   joinedAt               DateTime          @default(now())
 
   @@unique([leagueId, userId])
@@ -206,8 +232,7 @@ model UsedTeam {
 enum PickOutcome {
   PENDING
   WIN
-  DRAW_FORGIVEN
-  DRAW_ELIMINATED
+  DRAW
   LOSS
 }
 

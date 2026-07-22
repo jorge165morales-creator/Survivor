@@ -5,19 +5,22 @@ export interface SurvivalInput {
   fixtureHomeTeamId: string;
   fixtureAwayTeamId: string;
   result: FixtureResult;
-  tieForgivenessAlreadyUsed: boolean;
 }
 
 export interface SurvivalOutput {
   outcome: PickOutcome;
   eliminatesUser: boolean;
-  consumesTieForgiveness: boolean;
 }
 
 /**
  * Pure function: given a resolved fixture result, what happened to this one
  * pick. No I/O, no knowledge of leagues/users — recompute.service.ts is what
  * threads this across a season for a given member.
+ *
+ * A draw always survives; only an outright loss eliminates. (Buy-back — a
+ * commissioner-granted, once-per-season reinstatement after elimination —
+ * lives in recompute.service.ts, since it needs season-spanning state this
+ * per-matchday decision doesn't.)
  */
 export function computeSurvival(input: SurvivalInput): SurvivalOutput {
   const pickedHome = input.pickedTeamId === input.fixtureHomeTeamId;
@@ -25,17 +28,10 @@ export function computeSurvival(input: SurvivalInput): SurvivalOutput {
     (pickedHome && input.result === "HOME_WIN") || (!pickedHome && input.result === "AWAY_WIN");
 
   if (pickedTeamWon) {
-    return { outcome: "WIN", eliminatesUser: false, consumesTieForgiveness: false };
+    return { outcome: "WIN", eliminatesUser: false };
   }
-
   if (input.result === "DRAW") {
-    if (!input.tieForgivenessAlreadyUsed) {
-      return { outcome: "DRAW_FORGIVEN", eliminatesUser: false, consumesTieForgiveness: true };
-    }
-    return { outcome: "DRAW_ELIMINATED", eliminatesUser: true, consumesTieForgiveness: false };
+    return { outcome: "DRAW", eliminatesUser: false };
   }
-
-  // Picked team lost outright (or drew and forgiveness already used is
-  // handled above — this branch is a straight loss: the opposing team won).
-  return { outcome: "LOSS", eliminatesUser: true, consumesTieForgiveness: false };
+  return { outcome: "LOSS", eliminatesUser: true };
 }

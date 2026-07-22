@@ -13,7 +13,7 @@ export type FixtureResult = "HOME_WIN" | "AWAY_WIN" | "DRAW";
 
 export type MembershipStatus = "ACTIVE" | "ELIMINATED" | "LEFT";
 
-export type PickOutcome = "PENDING" | "WIN" | "DRAW_FORGIVEN" | "DRAW_ELIMINATED" | "LOSS";
+export type PickOutcome = "PENDING" | "WIN" | "DRAW" | "LOSS";
 
 export interface AuthUser {
   id: string;
@@ -33,6 +33,7 @@ export interface SeasonSummary {
   id: string;
   name: string;
   year: number;
+  isActive: boolean;
 }
 
 /** Response entry for GET /seasons/:seasonId/matchdays */
@@ -51,6 +52,8 @@ export interface LeagueMemberSummary {
   status: MembershipStatus;
   isCommissioner: boolean;
   joinedAt: string; // ISO 8601
+  /** Only meaningful when the league's paymentRequired is true. */
+  hasPaid: boolean;
 }
 
 /** Response shape for one entry of GET /leagues/mine */
@@ -63,6 +66,8 @@ export interface LeagueSummary {
   commissionerId: string;
   season: SeasonSummary;
   myStatus: MembershipStatus;
+  buyBackEnabled: boolean;
+  paymentRequired: boolean;
 }
 
 /** Response shape for GET /leagues/:id */
@@ -74,6 +79,8 @@ export interface LeagueDetail {
   createdAt: string; // ISO 8601
   season: SeasonSummary;
   commissionerId: string;
+  buyBackEnabled: boolean;
+  paymentRequired: boolean;
   members: LeagueMemberSummary[];
 }
 
@@ -146,11 +153,43 @@ export interface StandingsEntry {
   avatarUrl: string | null;
   status: MembershipStatus;
   eliminatedAtMatchdaySequence: number | null;
-  tieForgivenessUsed: boolean;
+  buyBackAvailable: boolean;
+  buyBackUsed: boolean;
 }
 
 /** Response shape for GET /leagues/:leagueId/standings */
 export interface StandingsResponse {
   leagueId: string;
   entries: StandingsEntry[];
+}
+
+export interface StandingsGridMatchday {
+  id: string;
+  sequence: number;
+  type: MatchdayType;
+  roundLabel: string;
+}
+
+export interface StandingsGridCell {
+  team: TeamSummary;
+  outcome: PickOutcome;
+  fixture: FixtureSummary;
+}
+
+export interface StandingsGridRow {
+  userId: string;
+  displayName: string;
+  status: MembershipStatus;
+  eliminatedAtMatchdaySequence: number | null;
+  buyBackAvailable: boolean;
+  buyBackUsed: boolean;
+  /** Keyed by matchday id; a missing key means no pick was made that matchday. */
+  picks: Record<string, StandingsGridCell>;
+}
+
+/** Response shape for GET /leagues/:leagueId/standings/grid */
+export interface StandingsGridResponse {
+  leagueId: string;
+  matchdays: StandingsGridMatchday[];
+  rows: StandingsGridRow[];
 }

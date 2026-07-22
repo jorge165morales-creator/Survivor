@@ -39,26 +39,32 @@ function makePrisma(): MockPrisma {
   };
 }
 
+function makeRecompute() {
+  return { recomputeLeague: jest.fn().mockResolvedValue(undefined) };
+}
+
 const SEASON = { id: "season-1", name: "UEFA Champions League 2026/27", year: 2026 };
 
 describe("LeaguesService", () => {
   let prisma: MockPrisma;
+  let recompute: ReturnType<typeof makeRecompute>;
   let service: LeaguesService;
 
   beforeEach(() => {
     prisma = makePrisma();
-    service = new LeaguesService(prisma as unknown as PrismaService);
+    recompute = makeRecompute();
+    service = new LeaguesService(prisma as unknown as PrismaService, recompute as never);
   });
 
   describe("create", () => {
     it("rejects an unknown seasonId", async () => {
       prisma.season.findUnique.mockResolvedValue(null);
-      await expect(service.create("user-1", "My League", "missing-season")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.create("user-1", "My League", "missing-season", false, false),
+      ).rejects.toThrow(NotFoundException);
     });
 
-    it("creates the league and auto-joins the commissioner as ACTIVE", async () => {
+    it("creates the league and auto-joins the commissioner as ACTIVE and already paid", async () => {
       prisma.season.findUnique.mockResolvedValue(SEASON);
       prisma.league.create.mockResolvedValue({
         id: "league-1",
@@ -66,11 +72,13 @@ describe("LeaguesService", () => {
         inviteCode: "abc123",
         maxMembers: 20,
         commissionerId: "user-1",
+        buyBackEnabled: false,
+        paymentRequired: true,
         season: SEASON,
         _count: { memberships: 1 },
       });
 
-      const result = await service.create("user-1", "My League", SEASON.id);
+      const result = await service.create("user-1", "My League", SEASON.id, false, true);
 
       expect(prisma.league.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -78,7 +86,16 @@ describe("LeaguesService", () => {
             name: "My League",
             seasonId: SEASON.id,
             commissionerId: "user-1",
-            memberships: { create: { userId: "user-1", status: MembershipStatus.ACTIVE } },
+            buyBackEnabled: false,
+            paymentRequired: true,
+            memberships: {
+              create: {
+                userId: "user-1",
+                status: MembershipStatus.ACTIVE,
+                hasPaid: true,
+                paidAt: expect.any(Date),
+              },
+            },
           }),
         }),
       );
@@ -141,7 +158,14 @@ describe("LeaguesService", () => {
 
       expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
         where: { id: "m2" },
-        data: { status: MembershipStatus.ACTIVE, tieForgivenessUsed: false, eliminatedAtMatchdayId: null },
+        data: {
+          status: MembershipStatus.ACTIVE,
+          buyBackAvailable: false,
+          buyBackUsed: false,
+          eliminatedAtMatchdayId: null,
+          hasPaid: false,
+          paidAt: null,
+        },
       });
       expect(prisma.leagueMembership.create).not.toHaveBeenCalled();
     });
@@ -218,6 +242,157 @@ describe("LeaguesService", () => {
       await expect(service.update("league-1", "commish", { maxMembers: 1 })).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe("grantBuyBack", () => {
+    const league = { id: "league-1", commissionerId: "commish", buyBackEnabled: true };
+
+    it("rejects a non-commissioner", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      await expect(service.grantBuyBack("league-1", "user-2", "user-3")).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("rejects when the league has buy-back disabled", async () => {
+      prisma.league.findUnique.mockResolvedValue({ ...league, buyBackEnabled: false });
+      await expect(service.grantBuyBack("league-1", "commish", "user-2")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("rejects when the target member isn't eliminated", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ACTIVE,
+        buyBackUsed: false,
+      });
+      await expect(service.grantBuyBack("league-1", "commish", "user-2")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("rejects when the member has already used their buy-back this season", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ELIMINATED,
+        buyBackUsed: true,
+      });
+      await expect(service.grantBuyBack("league-1", "commish", "user-2")).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it("grants the buy-back and triggers a recompute", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ELIMINATED,
+        buyBackAvailable: false,
+        buyBackUsed: false,
+      });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({
+        ...league,
+        season: SEASON,
+        _count: { memberships: 2 },
+      });
+      prisma.leagueMembership.findUniqueOrThrow.mockResolvedValue({
+        id: "m1",
+        userId: "commish",
+        status: MembershipStatus.ACTIVE,
+      });
+
+      await service.grantBuyBack("league-1", "commish", "user-2");
+
+      expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
+        where: { id: "m2" },
+        data: { buyBackAvailable: true },
+      });
+      expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
+    });
+  });
+
+  describe("markMemberPaid", () => {
+    const league = { id: "league-1", commissionerId: "commish", paymentRequired: true };
+
+    it("rejects a non-commissioner", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      await expect(service.markMemberPaid("league-1", "user-2", "user-3", true)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("rejects an unknown league", async () => {
+      prisma.league.findUnique.mockResolvedValue(null);
+      await expect(service.markMemberPaid("league-1", "commish", "user-2", true)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("rejects a target who isn't a member of this league", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue(null);
+      await expect(service.markMemberPaid("league-1", "commish", "user-2", true)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("marks a member paid, sets paidAt, and triggers a recompute", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ACTIVE,
+        hasPaid: false,
+      });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({
+        ...league,
+        buyBackEnabled: false,
+        season: SEASON,
+        _count: { memberships: 2 },
+      });
+      prisma.leagueMembership.findUniqueOrThrow.mockResolvedValue({
+        id: "m1",
+        userId: "commish",
+        status: MembershipStatus.ACTIVE,
+      });
+
+      await service.markMemberPaid("league-1", "commish", "user-2", true);
+
+      expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
+        where: { id: "m2" },
+        data: { hasPaid: true, paidAt: expect.any(Date) },
+      });
+      expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
+    });
+
+    it("clears paidAt when marking a member unpaid again", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ACTIVE,
+        hasPaid: true,
+      });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({
+        ...league,
+        buyBackEnabled: false,
+        season: SEASON,
+        _count: { memberships: 2 },
+      });
+      prisma.leagueMembership.findUniqueOrThrow.mockResolvedValue({
+        id: "m1",
+        userId: "commish",
+        status: MembershipStatus.ACTIVE,
+      });
+
+      await service.markMemberPaid("league-1", "commish", "user-2", false);
+
+      expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
+        where: { id: "m2" },
+        data: { hasPaid: false, paidAt: null },
+      });
     });
   });
 });

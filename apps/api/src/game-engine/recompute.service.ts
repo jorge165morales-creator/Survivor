@@ -47,7 +47,7 @@ export class RecomputeService {
 
         const league = await tx.league.findUniqueOrThrow({
           where: { id: leagueId },
-          select: { seasonId: true },
+          select: { seasonId: true, paymentRequired: true },
         });
         const matchdays = await tx.matchday.findMany({
           where: { seasonId: league.seasonId },
@@ -60,22 +60,53 @@ export class RecomputeService {
         const now = new Date();
 
         for (const membership of memberships) {
+          // When to start subjecting this member to the game engine at all.
+          // For a normal league it's simply when they joined — without this,
+          // anyone joining after matchday 1 has already locked would be
+          // "eliminated" the instant a recompute ran for them, having never
+          // gotten a chance to pick. For a payment-required league, an unpaid
+          // member isn't eligible yet at all (null skips them entirely below);
+          // once paid, paidAt plays the same role joinedAt normally would, so
+          // matchdays that locked before they were confirmed paid don't count
+          // against them either.
+          const eligibleFrom = league.paymentRequired
+            ? membership.hasPaid
+              ? (membership.paidAt ?? membership.joinedAt)
+              : null
+            : membership.joinedAt;
+          if (!eligibleFrom) {
+            continue; // Not paid yet — not participating, leave state untouched.
+          }
+
           const picks = await tx.pick.findMany({
             where: { leagueId, userId: membership.userId },
             include: { fixture: true },
           });
           const pickByMatchdayId = new Map(picks.map((p) => [p.matchdayId, p]));
 
-          let tieForgivenessUsed = false;
+          // Seeded from the persisted value, NOT false: buy-back is an
+          // explicit one-time grant (not a derived-fresh-every-pass property
+          // like the old tie-forgiveness), so it must stay spent across
+          // replay passes even if a later fixture correction reshuffles
+          // which matchday would otherwise have eliminated this member.
+          let buyBackConsumed = membership.buyBackUsed;
           let eliminatedAtMatchdayId: string | null = null;
           let finalStatus: MembershipStatus = "ACTIVE";
 
           for (const matchday of matchdays) {
+            if (matchday.lockAt < eligibleFrom) {
+              continue; // Locked before this member was eligible to play — doesn't count.
+            }
+
             const pick = pickByMatchdayId.get(matchday.id);
 
             if (!pick) {
               if (now >= matchday.lockAt) {
                 // Matchday locked with no pick on record — eliminated.
+                if (membership.buyBackAvailable && !buyBackConsumed) {
+                  buyBackConsumed = true;
+                  continue;
+                }
                 finalStatus = "ELIMINATED";
                 eliminatedAtMatchdayId = matchday.id;
               }
@@ -93,14 +124,14 @@ export class RecomputeService {
               fixtureHomeTeamId: fixture.homeTeamId,
               fixtureAwayTeamId: fixture.awayTeamId,
               result: fixture.result,
-              tieForgivenessAlreadyUsed: tieForgivenessUsed,
             });
 
             await this.setOutcomeIfChanged(tx, pick.id, pick.outcome, survival.outcome);
-            if (survival.consumesTieForgiveness) {
-              tieForgivenessUsed = true;
-            }
             if (survival.eliminatesUser) {
+              if (membership.buyBackAvailable && !buyBackConsumed) {
+                buyBackConsumed = true;
+                continue; // pick.outcome still factually records LOSS above
+              }
               finalStatus = "ELIMINATED";
               eliminatedAtMatchdayId = matchday.id;
               break;
@@ -110,11 +141,11 @@ export class RecomputeService {
           if (
             membership.status !== finalStatus ||
             membership.eliminatedAtMatchdayId !== eliminatedAtMatchdayId ||
-            membership.tieForgivenessUsed !== tieForgivenessUsed
+            membership.buyBackUsed !== buyBackConsumed
           ) {
             await tx.leagueMembership.update({
               where: { id: membership.id },
-              data: { status: finalStatus, eliminatedAtMatchdayId, tieForgivenessUsed },
+              data: { status: finalStatus, eliminatedAtMatchdayId, buyBackUsed: buyBackConsumed },
             });
           }
         }

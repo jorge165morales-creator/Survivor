@@ -12,4 +12,9 @@ export class StandingsController {
   getStandings(@CurrentUserId() userId: string, @Param("leagueId") leagueId: string) {
     return this.standings.getStandings(leagueId, userId);
   }
+
+  @Get("grid")
+  getStandingsGrid(@CurrentUserId() userId: string, @Param("leagueId") leagueId: string) {
+    return this.standings.getStandingsGrid(leagueId, userId);
+  }
 }

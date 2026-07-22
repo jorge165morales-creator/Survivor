@@ -12,6 +12,11 @@ export class SeasonsController {
     return this.seasons.getActive();
   }
 
+  @Get()
+  getAll() {
+    return this.seasons.getAll();
+  }
+
   @Get(":seasonId/matchdays")
   getMatchdays(@Param("seasonId") seasonId: string) {
     return this.seasons.getMatchdays(seasonId);

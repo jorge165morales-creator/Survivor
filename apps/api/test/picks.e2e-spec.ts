@@ -6,7 +6,7 @@ import { PrismaService } from "../src/prisma/prisma.service";
 
 // This is the highest-risk piece per the build plan: a full mini-season
 // played out through real HTTP requests against the live database,
-// verifying win/loss/draw-forgiveness/missed-pick elimination, the
+// verifying win/loss/draw-survival/missed-pick elimination, the
 // team-burn constraint, matchday locking, and — the part that matters
 // most — that an admin correcting an already-computed result causes the
 // recompute engine to converge on the right state rather than drift from
@@ -233,7 +233,7 @@ describe("Picks + Survival (e2e)", () => {
       .expect(400);
   });
 
-  it("correcting MD1 to a draw un-eliminates Bailey via first-time tie forgiveness", async () => {
+  it("correcting MD1 to a draw un-eliminates Bailey, since a draw always survives", async () => {
     await request(app.getHttpServer())
       .post(`/api/v1/admin/fixtures/${fixture1}/override`)
       .set("Authorization", `Bearer ${commissionerToken}`)
@@ -247,17 +247,15 @@ describe("Picks + Survival (e2e)", () => {
     const byUser = Object.fromEntries(standings.body.entries.map((e: { userId: string }) => [e.userId, e]));
 
     expect(byUser[bId].status).toBe("ACTIVE");
-    expect(byUser[bId].tieForgivenessUsed).toBe(true);
     expect(byUser[commissionerId].status).toBe("ACTIVE");
-    expect(byUser[commissionerId].tieForgivenessUsed).toBe(true);
-    expect(byUser[cId].tieForgivenessUsed).toBe(true);
+    expect(byUser[cId].status).toBe("ACTIVE");
 
     const myPicks = await request(app.getHttpServer())
       .get(`/api/v1/leagues/${leagueId}/picks/me`)
       .set("Authorization", `Bearer ${bToken}`)
       .expect(200);
     expect(myPicks.body.entries).toEqual([
-      expect.objectContaining({ matchdaySequence: 1, outcome: "DRAW_FORGIVEN" }),
+      expect.objectContaining({ matchdaySequence: 1, outcome: "DRAW" }),
     ]);
   });
 
@@ -289,18 +287,33 @@ describe("Picks + Survival (e2e)", () => {
   });
 
   it("a matchday that locked with no pick eliminates a member on the next recompute", async () => {
-    // MD1's lockAt was set in the future so the earlier pick-submission
-    // tests wouldn't hit MATCHDAY_LOCKED; flip it to the past now so a
-    // freshly-joined member (who never picked it) hits the missed-pick rule
-    // on the very first matchday of their walk.
-    await prisma.matchday.update({ where: { id: md1 }, data: { lockAt: new Date(Date.now() - 1000) } });
-
+    // Join BEFORE flipping md1's lockAt into the past: recompute now only
+    // holds a member to matchdays that locked after they joined (see
+    // recompute.service.ts's eligibility-window handling), so a member who
+    // joined after the fact is correctly not judged on a matchday they never
+    // had a chance to play — this member needs to have genuinely been around
+    // for it and simply never picked.
     const fresh = await registerAndLogin(`e2e-pick-fresh-${runId}@example.com`, "Fresh");
     await request(app.getHttpServer())
       .post("/api/v1/leagues/join")
       .set("Authorization", `Bearer ${fresh.token}`)
       .send({ inviteCode: (await prisma.league.findUniqueOrThrow({ where: { id: leagueId } })).inviteCode })
       .expect(200);
+
+    // Backdate joinedAt well into the past (rather than racing it against
+    // "now - 1s" for md1's lockAt below, which flakes depending on how long
+    // the requests in between actually take) so there's no ambiguity: this
+    // member was clearly already around when md1 locked, and simply never
+    // picked it.
+    await prisma.leagueMembership.update({
+      where: { leagueId_userId: { leagueId, userId: fresh.id } },
+      data: { joinedAt: new Date(Date.now() - 60 * 60 * 1000) },
+    });
+
+    // MD1's lockAt was set in the future so the earlier pick-submission
+    // tests wouldn't hit MATCHDAY_LOCKED; flip it to the past now so this
+    // member (who never picked it) hits the missed-pick rule.
+    await prisma.matchday.update({ where: { id: md1 }, data: { lockAt: new Date(Date.now() - 1000) } });
 
     // Trigger a recompute by re-overriding fixture2 with the same result
     // (idempotent — should still walk every member, including the one who

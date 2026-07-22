@@ -12,14 +12,24 @@ import type {
   LeagueSummary,
 } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
+import { RecomputeService } from "../game-engine/recompute.service";
 
 const ACTIVE_MEMBER_FILTER = { status: { not: MembershipStatus.LEFT } };
 
 @Injectable()
 export class LeaguesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly recompute: RecomputeService,
+  ) {}
 
-  async create(userId: string, name: string, seasonId: string): Promise<LeagueSummary> {
+  async create(
+    userId: string,
+    name: string,
+    seasonId: string,
+    buyBackEnabled: boolean,
+    paymentRequired: boolean,
+  ): Promise<LeagueSummary> {
     const season = await this.prisma.season.findUnique({ where: { id: seasonId } });
     if (!season) {
       throw new NotFoundException("Season not found");
@@ -29,8 +39,14 @@ export class LeaguesService {
       data: {
         name,
         seasonId,
+        buyBackEnabled,
+        paymentRequired,
         commissionerId: userId,
-        memberships: { create: { userId, status: MembershipStatus.ACTIVE } },
+        // The commissioner is exempt from their own payment gate — a
+        // paymentRequired league only makes sense for the members they invite.
+        memberships: {
+          create: { userId, status: MembershipStatus.ACTIVE, hasPaid: true, paidAt: new Date() },
+        },
       },
       include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
     });
@@ -78,8 +94,15 @@ export class LeaguesService {
       inviteCode: league.inviteCode,
       maxMembers: league.maxMembers,
       createdAt: league.createdAt.toISOString(),
-      season: { id: league.season.id, name: league.season.name, year: league.season.year },
+      season: {
+        id: league.season.id,
+        name: league.season.name,
+        year: league.season.year,
+        isActive: league.season.isActive,
+      },
       commissionerId: league.commissionerId,
+      buyBackEnabled: league.buyBackEnabled,
+      paymentRequired: league.paymentRequired,
       members: league.memberships.map((m) => ({
         userId: m.userId,
         displayName: m.user.displayName,
@@ -87,6 +110,7 @@ export class LeaguesService {
         status: m.status,
         isCommissioner: m.userId === league.commissionerId,
         joinedAt: m.joinedAt.toISOString(),
+        hasPaid: m.hasPaid,
       })),
     };
   }
@@ -113,7 +137,14 @@ export class LeaguesService {
     if (existing) {
       await this.prisma.leagueMembership.update({
         where: { id: existing.id },
-        data: { status: MembershipStatus.ACTIVE, tieForgivenessUsed: false, eliminatedAtMatchdayId: null },
+        data: {
+          status: MembershipStatus.ACTIVE,
+          buyBackAvailable: false,
+          buyBackUsed: false,
+          eliminatedAtMatchdayId: null,
+          hasPaid: false,
+          paidAt: null,
+        },
       });
     } else {
       await this.prisma.leagueMembership.create({
@@ -166,7 +197,7 @@ export class LeaguesService {
   async update(
     leagueId: string,
     userId: string,
-    data: { name?: string; maxMembers?: number },
+    data: { name?: string; maxMembers?: number; buyBackEnabled?: boolean; paymentRequired?: boolean },
   ): Promise<LeagueSummary> {
     const league = await this.prisma.league.findUnique({
       where: { id: leagueId },
@@ -191,6 +222,84 @@ export class LeaguesService {
     return this.getSummaryFor(leagueId, userId);
   }
 
+  /**
+   * Commissioner-only: grants an eliminated member a one-time buy-back this
+   * season. No payment happens in-app — any money changes hands between the
+   * commissioner and the member outside the app; this just flips the flag
+   * and lets the next recompute reinstate them (see recompute.service.ts's
+   * buyBackAvailable/buyBackUsed handling).
+   */
+  async grantBuyBack(leagueId: string, commissionerUserId: string, targetUserId: string): Promise<LeagueSummary> {
+    const league = await this.prisma.league.findUnique({ where: { id: leagueId } });
+    if (!league) {
+      throw new NotFoundException("League not found");
+    }
+    if (league.commissionerId !== commissionerUserId) {
+      throw new ForbiddenException("Only the commissioner can grant a buy-back");
+    }
+    if (!league.buyBackEnabled) {
+      throw new BadRequestException("Buy-back is not enabled for this league");
+    }
+
+    const membership = await this.prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId, userId: targetUserId } },
+    });
+    if (!membership || membership.status !== MembershipStatus.ELIMINATED) {
+      throw new BadRequestException("Only an eliminated member can be granted a buy-back");
+    }
+    if (membership.buyBackUsed) {
+      throw new ConflictException("This member has already used their buy-back this season");
+    }
+
+    if (!membership.buyBackAvailable) {
+      await this.prisma.leagueMembership.update({
+        where: { id: membership.id },
+        data: { buyBackAvailable: true },
+      });
+    }
+    await this.recompute.recomputeLeague(leagueId);
+
+    return this.getSummaryFor(leagueId, commissionerUserId);
+  }
+
+  /**
+   * Commissioner-only: for a paymentRequired league, a member can join and
+   * browse but doesn't actually enter the competition (isn't subject to the
+   * game engine, doesn't show up in standings) until this flips them paid.
+   * Payment itself happens outside the app. Toggling back to false is
+   * supported (e.g. correcting a mistake) but doesn't retroactively undo any
+   * state a recompute already wrote while they were marked paid.
+   */
+  async markMemberPaid(
+    leagueId: string,
+    commissionerUserId: string,
+    targetUserId: string,
+    hasPaid: boolean,
+  ): Promise<LeagueSummary> {
+    const league = await this.prisma.league.findUnique({ where: { id: leagueId } });
+    if (!league) {
+      throw new NotFoundException("League not found");
+    }
+    if (league.commissionerId !== commissionerUserId) {
+      throw new ForbiddenException("Only the commissioner can mark a member as paid");
+    }
+
+    const membership = await this.prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId, userId: targetUserId } },
+    });
+    if (!membership || membership.status === MembershipStatus.LEFT) {
+      throw new NotFoundException("This user is not a member of this league");
+    }
+
+    await this.prisma.leagueMembership.update({
+      where: { id: membership.id },
+      data: { hasPaid, paidAt: hasPaid ? new Date() : null },
+    });
+    await this.recompute.recomputeLeague(leagueId);
+
+    return this.getSummaryFor(leagueId, commissionerUserId);
+  }
+
   private async getSummaryFor(leagueId: string, userId: string): Promise<LeagueSummary> {
     const league = await this.prisma.league.findUniqueOrThrow({
       where: { id: leagueId },
@@ -209,7 +318,9 @@ export class LeaguesService {
       inviteCode: string;
       maxMembers: number;
       commissionerId: string;
-      season: { id: string; name: string; year: number };
+      buyBackEnabled: boolean;
+      paymentRequired: boolean;
+      season: { id: string; name: string; year: number; isActive: boolean };
       _count: { memberships: number };
     },
     myStatus: MembershipStatus,
@@ -221,7 +332,14 @@ export class LeaguesService {
       maxMembers: league.maxMembers,
       memberCount: league._count.memberships,
       commissionerId: league.commissionerId,
-      season: { id: league.season.id, name: league.season.name, year: league.season.year },
+      buyBackEnabled: league.buyBackEnabled,
+      paymentRequired: league.paymentRequired,
+      season: {
+        id: league.season.id,
+        name: league.season.name,
+        year: league.season.year,
+        isActive: league.season.isActive,
+      },
       myStatus,
     };
   }
