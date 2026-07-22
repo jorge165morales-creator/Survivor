@@ -8,8 +8,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { authApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function SignInScreen() {
+  const theme = useTheme();
   const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,22 +46,24 @@ export default function SignInScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="Email"
+          placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          style={styles.input}
+          style={[styles.input, { color: theme.text }]}
         />
         <TextInput
           value={password}
           onChangeText={setPassword}
           placeholder="Password"
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
           autoComplete="password"
-          style={styles.input}
+          style={[styles.input, { color: theme.text }]}
         />
 
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
@@ -67,7 +71,11 @@ export default function SignInScreen() {
         <Pressable
           onPress={handleSubmit}
           disabled={isSubmitting || !email || !password}
-          style={[styles.button, (isSubmitting || !email || !password) && styles.buttonDisabled]}>
+          style={[
+            styles.button,
+            { backgroundColor: theme.primary },
+            (isSubmitting || !email || !password) && styles.buttonDisabled,
+          ]}>
           {isSubmitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.buttonText}>Sign In</ThemedText>}
         </Pressable>
 
@@ -101,7 +109,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -110,5 +117,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#fff', fontWeight: '600' },
   link: { alignSelf: 'center', marginTop: Spacing.three },
-  error: { color: '#e5484d', textAlign: 'center' },
+  error: { textAlign: 'center' },
 });
