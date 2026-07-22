@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { PickHistoryEntry, PickOutcome } from '@survivor/shared-types';
@@ -10,16 +11,17 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { picksApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useTheme } from '@/hooks/use-theme';
 
 const OUTCOME_LABEL: Record<PickOutcome, string> = {
   PENDING: 'Pending',
   WIN: 'Win',
-  DRAW_FORGIVEN: 'Draw (forgiven)',
-  DRAW_ELIMINATED: 'Draw (eliminated)',
+  DRAW: 'Draw',
   LOSS: 'Loss',
 };
 
 export default function PickHistoryScreen() {
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [entries, setEntries] = useState<PickHistoryEntry[] | null>(null);
@@ -56,7 +58,7 @@ export default function PickHistoryScreen() {
         </ThemedText>
 
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
@@ -83,31 +85,34 @@ export default function PickHistoryScreen() {
 }
 
 function HistoryRow({ entry }: { entry: PickHistoryEntry }) {
+  const theme = useTheme();
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
+      {entry.team.crestUrl && (
+        <Image source={{ uri: entry.team.crestUrl }} style={styles.crest} contentFit="contain" />
+      )}
       <ThemedView style={styles.rowMain}>
         <ThemedText type="smallBold">{entry.roundLabel}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {entry.team.name}
         </ThemedText>
       </ThemedView>
-      <ThemedText type="small" style={outcomeStyle(entry.outcome)}>
+      <ThemedText type="small" style={{ color: outcomeColor(entry.outcome, theme) }}>
         {OUTCOME_LABEL[entry.outcome]}
       </ThemedText>
     </ThemedView>
   );
 }
 
-function outcomeStyle(outcome: PickOutcome) {
+function outcomeColor(outcome: PickOutcome, theme: ReturnType<typeof useTheme>) {
   switch (outcome) {
     case 'WIN':
-    case 'DRAW_FORGIVEN':
-      return styles.outcomeGood;
+    case 'DRAW':
+      return theme.success;
     case 'LOSS':
-    case 'DRAW_ELIMINATED':
-      return styles.outcomeBad;
+      return theme.danger;
     default:
-      return styles.outcomeNeutral;
+      return theme.textSecondary;
   }
 }
 
@@ -133,10 +138,9 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+    gap: Spacing.two,
   },
-  rowMain: { gap: Spacing.half },
-  outcomeGood: { color: '#2f9e44' },
-  outcomeBad: { color: '#e5484d' },
-  outcomeNeutral: { color: '#60646C' },
-  error: { color: '#e5484d', textAlign: 'center' },
+  rowMain: { flex: 1, gap: Spacing.half },
+  crest: { width: 40, height: 45 },
+  error: { textAlign: 'center' },
 });

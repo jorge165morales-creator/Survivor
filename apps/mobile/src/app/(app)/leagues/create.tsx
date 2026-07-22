@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SeasonSummary } from '@survivor/shared-types';
 
@@ -10,28 +10,39 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, seasonsApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function CreateLeagueScreen() {
+  const theme = useTheme();
   const { session } = useSession();
-  const [season, setSeason] = useState<SeasonSummary | null>(null);
+  const [seasons, setSeasons] = useState<SeasonSummary[] | null>(null);
+  const [seasonId, setSeasonId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [buyBackEnabled, setBuyBackEnabled] = useState(false);
+  const [paymentRequired, setPaymentRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!session) return;
     seasonsApi
-      .active(session.accessToken)
-      .then(setSeason)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the active season.'));
+      .all(session.accessToken)
+      .then((all) => {
+        setSeasons(all);
+        setSeasonId(all.find((s) => s.isActive)?.id ?? all[0]?.id ?? null);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load seasons.'));
   }, [session]);
 
   async function handleSubmit() {
-    if (!session || !season) return;
+    if (!session || !seasonId) return;
     setError(null);
     setIsSubmitting(true);
     try {
-      const league = await leaguesApi.create({ name: name.trim(), seasonId: season.id }, session.accessToken);
+      const league = await leaguesApi.create(
+        { name: name.trim(), seasonId, buyBackEnabled, paymentRequired },
+        session.accessToken,
+      );
       router.replace(`/leagues/${league.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
@@ -47,10 +58,22 @@ export default function CreateLeagueScreen() {
           Create a League
         </ThemedText>
 
-        {season ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-            {season.name}
-          </ThemedText>
+        {seasons ? (
+          <ThemedView style={styles.seasonList}>
+            {seasons.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => setSeasonId(s.id)}
+                style={[
+                  styles.seasonChip,
+                  seasonId === s.id && [styles.seasonChipSelected, { borderColor: theme.primary }],
+                ]}>
+                <ThemedText type="small" themeColor={seasonId === s.id ? 'text' : 'textSecondary'}>
+                  {s.name}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </ThemedView>
         ) : (
           <ActivityIndicator />
         )}
@@ -59,21 +82,52 @@ export default function CreateLeagueScreen() {
           value={name}
           onChangeText={setName}
           placeholder="League name"
-          style={styles.input}
+          placeholderTextColor={theme.textSecondary}
+          style={[styles.input, { color: theme.text }]}
         />
 
+        <ThemedView type="backgroundElement" style={styles.buyBackRow}>
+          <ThemedView style={styles.buyBackText}>
+            <ThemedText type="smallBold">Enable buy-back</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Lets you grant an eliminated member one rejoin per season.
+            </ThemedText>
+          </ThemedView>
+          <Switch
+            value={buyBackEnabled}
+            onValueChange={setBuyBackEnabled}
+            trackColor={{ true: theme.buyBack }}
+          />
+        </ThemedView>
+
+        <ThemedView type="backgroundElement" style={styles.buyBackRow}>
+          <ThemedView style={styles.buyBackText}>
+            <ThemedText type="smallBold">Require payment</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Members can join and browse, but you'll need to mark each one paid before they can
+              start picking.
+            </ThemedText>
+          </ThemedView>
+          <Switch
+            value={paymentRequired}
+            onValueChange={setPaymentRequired}
+            trackColor={{ true: theme.primary }}
+          />
+        </ThemedView>
+
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
 
         <Pressable
           onPress={handleSubmit}
-          disabled={isSubmitting || !season || name.trim().length === 0}
+          disabled={isSubmitting || !seasonId || name.trim().length === 0}
           style={[
             styles.button,
-            (isSubmitting || !season || name.trim().length === 0) && styles.buttonDisabled,
+            { backgroundColor: theme.primary },
+            (isSubmitting || !seasonId || name.trim().length === 0) && styles.buttonDisabled,
           ]}>
           {isSubmitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.buttonText}>Create</ThemedText>}
         </Pressable>
@@ -99,6 +153,15 @@ const styles = StyleSheet.create({
   },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.two },
+  seasonList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  seasonChip: {
+    borderWidth: 1,
+    borderColor: '#8888',
+    borderRadius: 20,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  seasonChipSelected: { borderWidth: 2 },
   input: {
     borderWidth: 1,
     borderColor: '#8888',
@@ -107,8 +170,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     fontSize: 16,
   },
+  buyBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  buyBackText: { flex: 1, gap: Spacing.half },
   button: {
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -117,5 +188,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#fff', fontWeight: '600' },
   cancel: { alignSelf: 'center', marginTop: Spacing.two },
-  error: { color: '#e5484d', textAlign: 'center' },
+  error: { textAlign: 'center' },
 });

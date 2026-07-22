@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { LeagueDetail, LeagueMemberSummary } from '@survivor/shared-types';
 
@@ -11,13 +11,16 @@ import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { confirmAsync, notify } from '@/utils/alerts';
 import { goBackOrHome } from '@/utils/navigation';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function LeagueDetailScreen() {
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [league, setLeague] = useState<LeagueDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!session || !id) return;
@@ -40,6 +43,19 @@ export default function LeagueDetailScreen() {
       await Share.share({ message: `Join my Survivor league! Invite code: ${inviteCode}\n${url}` });
     } catch (err) {
       notify('Could not create invite link', err instanceof ApiError ? err.message : undefined);
+    }
+  }
+
+  async function handleTogglePaid(userId: string, hasPaid: boolean) {
+    if (!session || !id) return;
+    setTogglingUserId(userId);
+    try {
+      await leaguesApi.markPaid(id, userId, hasPaid, session.accessToken);
+      load();
+    } catch (err) {
+      notify('Could not update payment status', err instanceof ApiError ? err.message : undefined);
+    } finally {
+      setTogglingUserId(null);
     }
   }
 
@@ -78,7 +94,7 @@ export default function LeagueDetailScreen() {
         </Pressable>
 
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
@@ -96,7 +112,7 @@ export default function LeagueDetailScreen() {
 
             <ThemedView style={styles.actionsRow}>
               <Pressable
-                style={styles.actionButton}
+                style={[styles.actionButton, { backgroundColor: theme.primary }]}
                 onPress={() => router.push(`/leagues/${id}/pick`)}>
                 <ThemedText style={styles.actionButtonText}>Make Pick</ThemedText>
               </Pressable>
@@ -112,13 +128,19 @@ export default function LeagueDetailScreen() {
               </Pressable>
             </ThemedView>
 
+            <Pressable
+              style={styles.rulesButton}
+              onPress={() => router.push(`/leagues/${id}/rules`)}>
+              <ThemedText type="linkPrimary">Rules</ThemedText>
+            </Pressable>
+
             {myStatus === 'ELIMINATED' && (
-              <ThemedText type="small" style={styles.eliminatedBanner}>
+              <ThemedText type="small" style={[styles.eliminatedBanner, { color: theme.danger }]}>
                 You've been eliminated from this league.
               </ThemedText>
             )}
 
-            <Pressable onPress={handleShare} style={styles.shareButton}>
+            <Pressable onPress={handleShare} style={[styles.shareButton, { backgroundColor: theme.primary }]}>
               <ThemedText style={styles.shareButtonText}>Share Invite</ThemedText>
             </Pressable>
 
@@ -129,12 +151,27 @@ export default function LeagueDetailScreen() {
               data={league.members}
               keyExtractor={(m) => m.userId}
               contentContainerStyle={styles.list}
-              renderItem={({ item }) => <MemberRow member={item} />}
+              renderItem={({ item }) => (
+                <MemberRow
+                  member={item}
+                  paymentRequired={league.paymentRequired}
+                  canTogglePaid={isCommissioner && !item.isCommissioner}
+                  isToggling={togglingUserId === item.userId}
+                  onTogglePaid={(hasPaid) => handleTogglePaid(item.userId, hasPaid)}
+                />
+              )}
             />
 
             {!isCommissioner && (
-              <Pressable onPress={handleLeave} disabled={isLeaving} style={styles.leaveButton}>
-                {isLeaving ? <ActivityIndicator /> : <ThemedText style={styles.leaveButtonText}>Leave League</ThemedText>}
+              <Pressable
+                onPress={handleLeave}
+                disabled={isLeaving}
+                style={[styles.leaveButton, { borderColor: theme.danger }]}>
+                {isLeaving ? (
+                  <ActivityIndicator />
+                ) : (
+                  <ThemedText style={[styles.leaveButtonText, { color: theme.danger }]}>Leave League</ThemedText>
+                )}
               </Pressable>
             )}
           </>
@@ -144,16 +181,50 @@ export default function LeagueDetailScreen() {
   );
 }
 
-function MemberRow({ member }: { member: LeagueMemberSummary }) {
+function MemberRow({
+  member,
+  paymentRequired,
+  canTogglePaid,
+  isToggling,
+  onTogglePaid,
+}: {
+  member: LeagueMemberSummary;
+  paymentRequired: boolean;
+  canTogglePaid: boolean;
+  isToggling: boolean;
+  onTogglePaid: (hasPaid: boolean) => void;
+}) {
+  const theme = useTheme();
+  const awaitingPayment = paymentRequired && !member.hasPaid;
+
   return (
     <ThemedView type="backgroundElement" style={styles.memberRow}>
       <ThemedText type="small">
         {member.displayName}
         {member.isCommissioner ? ' (Commissioner)' : ''}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {member.status === 'ACTIVE' ? 'Alive' : member.status === 'ELIMINATED' ? 'Eliminated' : 'Left'}
-      </ThemedText>
+      <ThemedView style={styles.memberRowRight}>
+        <ThemedText type="small" style={{ color: awaitingPayment ? theme.buyBack : theme.textSecondary }}>
+          {awaitingPayment
+            ? 'Awaiting payment'
+            : member.status === 'ACTIVE'
+              ? 'Alive'
+              : member.status === 'ELIMINATED'
+                ? 'Eliminated'
+                : 'Left'}
+        </ThemedText>
+        {paymentRequired && canTogglePaid && (
+          isToggling ? (
+            <ActivityIndicator size="small" />
+          ) : (
+            <Switch
+              value={member.hasPaid}
+              onValueChange={onTogglePaid}
+              trackColor={{ true: theme.buyBack }}
+            />
+          )
+        )}
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -179,7 +250,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -194,13 +264,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonSecondaryText: { fontWeight: '600' },
+  rulesButton: { alignItems: 'center', paddingVertical: Spacing.one },
   eliminatedBanner: {
-    color: '#e5484d',
     textAlign: 'center',
     marginBottom: Spacing.two,
   },
   shareButton: {
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.two,
     alignItems: 'center',
@@ -212,18 +281,23 @@ const styles = StyleSheet.create({
   memberRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
+  memberRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   leaveButton: {
     borderWidth: 1,
-    borderColor: '#e5484d',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.two,
   },
-  leaveButtonText: { color: '#e5484d', fontWeight: '600' },
-  error: { color: '#e5484d', textAlign: 'center' },
+  leaveButtonText: { fontWeight: '600' },
+  error: { textAlign: 'center' },
 });

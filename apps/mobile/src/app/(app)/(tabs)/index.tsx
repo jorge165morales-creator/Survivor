@@ -9,8 +9,10 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function LeagueListScreen() {
+  const theme = useTheme();
   const { session, signOut } = useSession();
   const [leagues, setLeagues] = useState<LeagueSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,9 @@ export default function LeagueListScreen() {
         </ThemedView>
 
         <ThemedView style={styles.actionsRow}>
-          <Pressable style={styles.actionButton} onPress={() => router.push('/leagues/create')}>
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: theme.primary }]}
+            onPress={() => router.push('/leagues/create')}>
             <ThemedText style={styles.actionButtonText}>+ Create League</ThemedText>
           </Pressable>
           <Pressable style={styles.actionButtonSecondary} onPress={() => router.push('/leagues/join')}>
@@ -66,7 +70,7 @@ export default function LeagueListScreen() {
         </ThemedView>
 
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
@@ -95,6 +99,7 @@ export default function LeagueListScreen() {
 }
 
 function LeagueCard({ league }: { league: LeagueSummary }) {
+  const theme = useTheme();
   return (
     <Pressable onPress={() => router.push(`/leagues/${league.id}`)}>
       <ThemedView type="backgroundElement" style={styles.card}>
@@ -102,16 +107,14 @@ function LeagueCard({ league }: { league: LeagueSummary }) {
         <ThemedText type="small" themeColor="textSecondary">
           {league.season.name} · {league.memberCount}/{league.maxMembers} members
         </ThemedText>
-        <ThemedText type="small" style={statusStyle(league.myStatus)}>
+        <ThemedText
+          type="small"
+          style={{ color: league.myStatus === 'ACTIVE' ? theme.success : theme.danger }}>
           {league.myStatus === 'ACTIVE' ? 'Alive' : league.myStatus === 'ELIMINATED' ? 'Eliminated' : ''}
         </ThemedText>
       </ThemedView>
     </Pressable>
   );
-}
-
-function statusStyle(status: LeagueSummary['myStatus']) {
-  return status === 'ACTIVE' ? styles.statusAlive : styles.statusEliminated;
 }
 
 const styles = StyleSheet.create({
@@ -137,7 +140,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -156,7 +158,5 @@ const styles = StyleSheet.create({
   emptyState: { paddingVertical: Spacing.five, alignItems: 'center' },
   list: { gap: Spacing.two, paddingBottom: Spacing.four },
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.half },
-  statusAlive: { color: '#2f9e44' },
-  statusEliminated: { color: '#e5484d' },
-  error: { color: '#e5484d', textAlign: 'center' },
+  error: { textAlign: 'center' },
 });

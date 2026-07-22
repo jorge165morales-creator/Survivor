@@ -9,8 +9,10 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function JoinLeagueScreen() {
+  const theme = useTheme();
   const { session } = useSession();
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +46,14 @@ export default function JoinLeagueScreen() {
           value={inviteCode}
           onChangeText={setInviteCode}
           placeholder="Invite code"
+          placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
-          style={styles.input}
+          style={[styles.input, { color: theme.text }]}
         />
 
         {error && (
-          <ThemedText type="small" style={styles.error}>
+          <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
             {error}
           </ThemedText>
         )}
@@ -58,7 +61,11 @@ export default function JoinLeagueScreen() {
         <Pressable
           onPress={handleSubmit}
           disabled={isSubmitting || inviteCode.trim().length === 0}
-          style={[styles.button, (isSubmitting || inviteCode.trim().length === 0) && styles.buttonDisabled]}>
+          style={[
+            styles.button,
+            { backgroundColor: theme.primary },
+            (isSubmitting || inviteCode.trim().length === 0) && styles.buttonDisabled,
+          ]}>
           {isSubmitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.buttonText}>Join</ThemedText>}
         </Pressable>
 
@@ -92,7 +99,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#208AEF',
     borderRadius: 8,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -101,5 +107,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#fff', fontWeight: '600' },
   cancel: { alignSelf: 'center', marginTop: Spacing.two },
-  error: { color: '#e5484d', textAlign: 'center' },
+  error: { textAlign: 'center' },
 });

@@ -17,6 +17,7 @@ import type {
   PickHistoryResponse,
   PickOptionsResponse,
   SeasonSummary,
+  StandingsGridResponse,
   StandingsResponse,
 } from "@survivor/shared-types";
 
@@ -148,10 +149,15 @@ export const leaguesApi = {
   inviteLink: (id: string, accessToken: string) =>
     post<InviteLinkResponse>(`/leagues/${id}/invite-link`, {}, accessToken),
   leave: (id: string, accessToken: string) => del(`/leagues/${id}/members/me`, accessToken),
+  grantBuyBack: (id: string, userId: string, accessToken: string) =>
+    post<LeagueSummary>(`/leagues/${id}/members/${userId}/grant-buy-back`, {}, accessToken),
+  markPaid: (id: string, userId: string, hasPaid: boolean, accessToken: string) =>
+    post<LeagueSummary>(`/leagues/${id}/members/${userId}/mark-paid`, { hasPaid }, accessToken),
 };
 
 export const seasonsApi = {
   active: (accessToken: string) => get<SeasonSummary>("/seasons/active", accessToken),
+  all: (accessToken: string) => get<SeasonSummary[]>("/seasons", accessToken),
   matchdays: (seasonId: string, accessToken: string) =>
     get<MatchdaySummary[]>(`/seasons/${seasonId}/matchdays`, accessToken),
 };
@@ -172,4 +178,6 @@ export const picksApi = {
 export const standingsApi = {
   get: (leagueId: string, accessToken: string) =>
     get<StandingsResponse>(`/leagues/${leagueId}/standings`, accessToken),
+  grid: (leagueId: string, accessToken: string) =>
+    get<StandingsGridResponse>(`/leagues/${leagueId}/standings/grid`, accessToken),
 };
