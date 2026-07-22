@@ -139,7 +139,7 @@ export default function PickScreen() {
         )}
         {!isEliminated && isUnpaid && (
           <ThemedText type="small" style={[styles.bannerError, { color: theme.buyBack }]}>
-            Waiting for the commissioner to confirm your payment before you can pick. You can still
+            Waiting for the admin to confirm your payment before you can pick. You can still
             browse the teams below.
           </ThemedText>
         )}

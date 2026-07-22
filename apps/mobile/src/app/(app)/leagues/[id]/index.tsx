@@ -201,7 +201,7 @@ function MemberRow({
     <ThemedView type="backgroundElement" style={styles.memberRow}>
       <ThemedText type="small">
         {member.displayName}
-        {member.isCommissioner ? ' (Commissioner)' : ''}
+        {member.isCommissioner ? ' (Admin)' : ''}
       </ThemedText>
       <ThemedView style={styles.memberRowRight}>
         <ThemedText type="small" style={{ color: awaitingPayment ? theme.buyBack : theme.textSecondary }}>

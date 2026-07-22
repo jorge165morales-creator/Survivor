@@ -10,28 +10,16 @@ import { useTheme } from '@/hooks/use-theme';
 
 const RULES: { title: string; body: string }[] = [
   {
-    title: 'One pick per matchday',
-    body: 'Each matchday, pick one team you think will win or draw. You can change your pick as many times as you like until the matchday locks.',
-  },
-  {
-    title: 'A draw always survives',
-    body: 'If your team draws, you survive to the next matchday. Only an outright loss eliminates you.',
-  },
-  {
-    title: 'You can only use a team once',
-    body: "Once you've picked a team, it's used up for the rest of the season in this league — you can't pick it again.",
-  },
-  {
-    title: 'Running out of teams eliminates you',
-    body: "If every team left in a matchday's fixtures has already been used by you, you have no valid pick available — you'll be eliminated when that matchday locks, the same as missing a pick.",
+    title: 'Survive each matchday',
+    body: "Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The tournament runs 17 matchdays — 8 group stage, 8 play-offs, and 1 final. See how many you can survive!",
   },
   {
     title: 'Missing a pick eliminates you',
     body: 'If a matchday locks and you never submitted a pick, you are eliminated — the same as if your pick had lost.',
   },
   {
-    title: 'Buy-back (if enabled by your commissioner)',
-    body: 'A commissioner can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
+    title: 'Buy-back (if enabled by your admin)',
+    body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
   },
   {
     title: 'Tie-break: buy-back used',
