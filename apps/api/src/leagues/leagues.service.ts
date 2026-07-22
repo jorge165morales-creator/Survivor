@@ -269,6 +269,14 @@ export class LeaguesService {
    * Payment itself happens outside the app. Toggling back to false is
    * supported (e.g. correcting a mistake) but doesn't retroactively undo any
    * state a recompute already wrote while they were marked paid.
+   *
+   * paidAt is stamped only on the FIRST false-to-true transition, then left
+   * alone — including across a false/true/false/true round trip. Re-stamping
+   * it on every call would silently discard real history: recompute treats
+   * any matchday that locked before paidAt as one this member was never
+   * eligible for, so bumping paidAt forward past matchdays they already
+   * played (and possibly lost) would revert them to ACTIVE regardless of
+   * what they actually picked.
    */
   async markMemberPaid(
     leagueId: string,
@@ -293,7 +301,7 @@ export class LeaguesService {
 
     await this.prisma.leagueMembership.update({
       where: { id: membership.id },
-      data: { hasPaid, paidAt: hasPaid ? new Date() : null },
+      data: { hasPaid, paidAt: hasPaid ? (membership.paidAt ?? new Date()) : membership.paidAt },
     });
     await this.recompute.recomputeLeague(leagueId);
 

@@ -368,12 +368,14 @@ describe("LeaguesService", () => {
       expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
     });
 
-    it("clears paidAt when marking a member unpaid again", async () => {
+    it("preserves paidAt when marking a member unpaid again", async () => {
+      const originalPaidAt = new Date("2026-07-16T00:00:00.000Z");
       prisma.league.findUnique.mockResolvedValue(league);
       prisma.leagueMembership.findUnique.mockResolvedValue({
         id: "m2",
         status: MembershipStatus.ACTIVE,
         hasPaid: true,
+        paidAt: originalPaidAt,
       });
       prisma.league.findUniqueOrThrow.mockResolvedValue({
         ...league,
@@ -391,7 +393,40 @@ describe("LeaguesService", () => {
 
       expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
         where: { id: "m2" },
-        data: { hasPaid: false, paidAt: null },
+        data: { hasPaid: false, paidAt: originalPaidAt },
+      });
+    });
+
+    it("does not bump paidAt forward when re-confirming a member already marked paid", async () => {
+      // Regression test: re-stamping paidAt on every true-call would make
+      // recompute treat matchdays that already locked (and were already
+      // played) as ones this member wasn't eligible for yet, silently
+      // reverting a real elimination back to ACTIVE.
+      const originalPaidAt = new Date("2026-07-16T00:00:00.000Z");
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ACTIVE,
+        hasPaid: true,
+        paidAt: originalPaidAt,
+      });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({
+        ...league,
+        buyBackEnabled: false,
+        season: SEASON,
+        _count: { memberships: 2 },
+      });
+      prisma.leagueMembership.findUniqueOrThrow.mockResolvedValue({
+        id: "m1",
+        userId: "commish",
+        status: MembershipStatus.ACTIVE,
+      });
+
+      await service.markMemberPaid("league-1", "commish", "user-2", true);
+
+      expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
+        where: { id: "m2" },
+        data: { hasPaid: true, paidAt: originalPaidAt },
       });
     });
   });
