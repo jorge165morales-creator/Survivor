@@ -1,0 +1,221 @@
+// Real results from the completed 2025/26 UEFA Champions League season
+// (sourced from Wikipedia's league-phase and knockout-phase results
+// tables), used to seed a fully playable test season — see seed.ts.
+// Tuple shape: [homeTeam, awayTeam, homeScore, awayScore].
+
+export const LEAGUE_PHASE_RESULTS: Record<number, [string, string, number, number][]> = {
+  1: [
+    ["Athletic Bilbao", "Arsenal", 0, 2],
+    ["PSV Eindhoven", "Union Saint-Gilloise", 1, 3],
+    ["Juventus", "Borussia Dortmund", 4, 4],
+    ["Real Madrid", "Marseille", 2, 1],
+    ["Benfica", "Qarabag", 2, 3],
+    ["Tottenham Hotspur", "Villarreal", 1, 0],
+    ["Olympiacos", "Pafos", 0, 0],
+    ["Slavia Prague", "Bodo/Glimt", 2, 2],
+    ["Ajax", "Inter Milan", 0, 2],
+    ["Bayern Munich", "Chelsea", 3, 1],
+    ["Liverpool", "Atletico Madrid", 3, 2],
+    ["Paris Saint-Germain", "Atalanta", 4, 0],
+    ["Club Brugge", "Monaco", 4, 1],
+    ["Copenhagen", "Bayer Leverkusen", 2, 2],
+    ["Eintracht Frankfurt", "Galatasaray", 5, 1],
+    ["Manchester City", "Napoli", 2, 0],
+    ["Newcastle United", "Barcelona", 1, 2],
+    ["Sporting CP", "Kairat", 4, 1],
+  ],
+  2: [
+    ["Atalanta", "Club Brugge", 2, 1],
+    ["Kairat", "Real Madrid", 0, 5],
+    ["Atletico Madrid", "Eintracht Frankfurt", 5, 1],
+    ["Chelsea", "Benfica", 1, 0],
+    ["Inter Milan", "Slavia Prague", 3, 0],
+    ["Bodo/Glimt", "Tottenham Hotspur", 2, 2],
+    ["Galatasaray", "Liverpool", 1, 0],
+    ["Marseille", "Ajax", 4, 0],
+    ["Pafos", "Bayern Munich", 1, 5],
+    ["Qarabag", "Copenhagen", 2, 0],
+    ["Union Saint-Gilloise", "Newcastle United", 0, 4],
+    ["Arsenal", "Olympiacos", 2, 0],
+    ["Monaco", "Manchester City", 2, 2],
+    ["Bayer Leverkusen", "PSV Eindhoven", 1, 1],
+    ["Borussia Dortmund", "Athletic Bilbao", 4, 1],
+    ["Barcelona", "Paris Saint-Germain", 1, 2],
+    ["Napoli", "Sporting CP", 2, 1],
+    ["Villarreal", "Juventus", 2, 2],
+  ],
+  3: [
+    ["Barcelona", "Olympiacos", 6, 1],
+    ["Kairat", "Pafos", 0, 0],
+    ["Arsenal", "Atletico Madrid", 4, 0],
+    ["Bayer Leverkusen", "Paris Saint-Germain", 2, 7],
+    ["Copenhagen", "Borussia Dortmund", 2, 4],
+    ["Newcastle United", "Benfica", 3, 0],
+    ["PSV Eindhoven", "Napoli", 6, 2],
+    ["Union Saint-Gilloise", "Inter Milan", 0, 4],
+    ["Villarreal", "Manchester City", 0, 2],
+    ["Athletic Bilbao", "Qarabag", 3, 1],
+    ["Galatasaray", "Bodo/Glimt", 3, 1],
+    ["Monaco", "Tottenham Hotspur", 0, 0],
+    ["Atalanta", "Slavia Prague", 0, 0],
+    ["Chelsea", "Ajax", 5, 1],
+    ["Eintracht Frankfurt", "Liverpool", 1, 5],
+    ["Bayern Munich", "Club Brugge", 4, 0],
+    ["Real Madrid", "Juventus", 1, 0],
+    ["Sporting CP", "Marseille", 2, 1],
+  ],
+  4: [
+    ["Slavia Prague", "Arsenal", 0, 3],
+    ["Napoli", "Eintracht Frankfurt", 0, 0],
+    ["Atletico Madrid", "Union Saint-Gilloise", 3, 1],
+    ["Bodo/Glimt", "Monaco", 0, 1],
+    ["Juventus", "Sporting CP", 1, 1],
+    ["Liverpool", "Real Madrid", 1, 0],
+    ["Olympiacos", "PSV Eindhoven", 1, 1],
+    ["Paris Saint-Germain", "Bayern Munich", 1, 2],
+    ["Tottenham Hotspur", "Copenhagen", 4, 0],
+    ["Pafos", "Villarreal", 1, 0],
+    ["Qarabag", "Chelsea", 2, 2],
+    ["Ajax", "Galatasaray", 0, 3],
+    ["Club Brugge", "Barcelona", 3, 3],
+    ["Inter Milan", "Kairat", 2, 1],
+    ["Manchester City", "Borussia Dortmund", 4, 1],
+    ["Newcastle United", "Athletic Bilbao", 2, 0],
+    ["Marseille", "Atalanta", 0, 1],
+    ["Benfica", "Bayer Leverkusen", 0, 1],
+  ],
+  5: [
+    ["Ajax", "Benfica", 0, 2],
+    ["Galatasaray", "Union Saint-Gilloise", 0, 1],
+    ["Borussia Dortmund", "Villarreal", 4, 0],
+    ["Chelsea", "Barcelona", 3, 0],
+    ["Bodo/Glimt", "Juventus", 2, 3],
+    ["Manchester City", "Bayer Leverkusen", 0, 2],
+    ["Marseille", "Newcastle United", 2, 1],
+    ["Slavia Prague", "Athletic Bilbao", 0, 0],
+    ["Napoli", "Qarabag", 2, 0],
+    ["Copenhagen", "Kairat", 3, 2],
+    ["Pafos", "Monaco", 2, 2],
+    ["Arsenal", "Bayern Munich", 3, 1],
+    ["Atletico Madrid", "Inter Milan", 2, 1],
+    ["Eintracht Frankfurt", "Atalanta", 0, 3],
+    ["Liverpool", "PSV Eindhoven", 1, 4],
+    ["Olympiacos", "Real Madrid", 3, 4],
+    ["Paris Saint-Germain", "Tottenham Hotspur", 5, 3],
+    ["Sporting CP", "Club Brugge", 3, 0],
+  ],
+  6: [
+    ["Kairat", "Olympiacos", 0, 1],
+    ["Bayern Munich", "Sporting CP", 3, 1],
+    ["Monaco", "Galatasaray", 1, 0],
+    ["Atalanta", "Chelsea", 2, 1],
+    ["Barcelona", "Eintracht Frankfurt", 2, 1],
+    ["Inter Milan", "Liverpool", 0, 1],
+    ["PSV Eindhoven", "Atletico Madrid", 2, 3],
+    ["Union Saint-Gilloise", "Marseille", 2, 3],
+    ["Tottenham Hotspur", "Slavia Prague", 3, 0],
+    ["Qarabag", "Ajax", 2, 4],
+    ["Villarreal", "Copenhagen", 2, 3],
+    ["Athletic Bilbao", "Paris Saint-Germain", 0, 0],
+    ["Bayer Leverkusen", "Newcastle United", 2, 2],
+    ["Borussia Dortmund", "Bodo/Glimt", 2, 2],
+    ["Club Brugge", "Arsenal", 0, 3],
+    ["Juventus", "Pafos", 2, 0],
+    ["Real Madrid", "Manchester City", 1, 2],
+    ["Benfica", "Napoli", 2, 0],
+  ],
+  7: [
+    ["Kairat", "Club Brugge", 1, 4],
+    ["Bodo/Glimt", "Manchester City", 3, 1],
+    ["Copenhagen", "Napoli", 1, 1],
+    ["Inter Milan", "Arsenal", 1, 3],
+    ["Olympiacos", "Bayer Leverkusen", 2, 0],
+    ["Real Madrid", "Monaco", 6, 1],
+    ["Sporting CP", "Paris Saint-Germain", 2, 1],
+    ["Tottenham Hotspur", "Borussia Dortmund", 2, 0],
+    ["Villarreal", "Ajax", 1, 2],
+    ["Galatasaray", "Atletico Madrid", 1, 1],
+    ["Qarabag", "Eintracht Frankfurt", 3, 2],
+    ["Atalanta", "Athletic Bilbao", 2, 3],
+    ["Chelsea", "Pafos", 1, 0],
+    ["Bayern Munich", "Union Saint-Gilloise", 2, 0],
+    ["Juventus", "Benfica", 2, 0],
+    ["Newcastle United", "PSV Eindhoven", 3, 0],
+    ["Marseille", "Liverpool", 0, 3],
+    ["Slavia Prague", "Barcelona", 2, 4],
+  ],
+  8: [
+    ["Ajax", "Olympiacos", 1, 2],
+    ["Arsenal", "Kairat", 3, 2],
+    ["Monaco", "Juventus", 0, 0],
+    ["Athletic Bilbao", "Sporting CP", 2, 3],
+    ["Atletico Madrid", "Bodo/Glimt", 1, 2],
+    ["Bayer Leverkusen", "Villarreal", 3, 0],
+    ["Borussia Dortmund", "Inter Milan", 0, 2],
+    ["Club Brugge", "Marseille", 3, 0],
+    ["Eintracht Frankfurt", "Tottenham Hotspur", 0, 2],
+    ["Barcelona", "Copenhagen", 4, 1],
+    ["Liverpool", "Qarabag", 6, 0],
+    ["Manchester City", "Galatasaray", 2, 0],
+    ["Pafos", "Slavia Prague", 4, 1],
+    ["Paris Saint-Germain", "Newcastle United", 1, 1],
+    ["PSV Eindhoven", "Bayern Munich", 1, 2],
+    ["Union Saint-Gilloise", "Atalanta", 1, 0],
+    ["Benfica", "Real Madrid", 4, 2],
+    ["Napoli", "Chelsea", 2, 3],
+  ],
+};
+
+// Two-legged knockout ties. leg2's home/away is as actually played
+// (the return leg swaps venues) — both legs become separate Fixture rows
+// under that round's KNOCKOUT_HOME / KNOCKOUT_AWAY matchday.
+export interface KnockoutTie {
+  leg1: [string, string, number, number];
+  leg2: [string, string, number, number];
+}
+
+export const KNOCKOUT_PLAYOFFS: KnockoutTie[] = [
+  { leg1: ["Monaco", "Paris Saint-Germain", 2, 3], leg2: ["Paris Saint-Germain", "Monaco", 2, 2] },
+  { leg1: ["Galatasaray", "Juventus", 5, 2], leg2: ["Juventus", "Galatasaray", 3, 2] },
+  { leg1: ["Benfica", "Real Madrid", 0, 1], leg2: ["Real Madrid", "Benfica", 2, 1] },
+  { leg1: ["Borussia Dortmund", "Atalanta", 2, 0], leg2: ["Atalanta", "Borussia Dortmund", 4, 1] },
+  { leg1: ["Qarabag", "Newcastle United", 1, 6], leg2: ["Newcastle United", "Qarabag", 3, 2] },
+  { leg1: ["Club Brugge", "Atletico Madrid", 3, 3], leg2: ["Atletico Madrid", "Club Brugge", 4, 1] },
+  { leg1: ["Bodo/Glimt", "Inter Milan", 3, 1], leg2: ["Inter Milan", "Bodo/Glimt", 1, 2] },
+  { leg1: ["Olympiacos", "Bayer Leverkusen", 0, 2], leg2: ["Bayer Leverkusen", "Olympiacos", 0, 0] },
+];
+
+export const ROUND_OF_16: KnockoutTie[] = [
+  { leg1: ["Paris Saint-Germain", "Chelsea", 5, 2], leg2: ["Chelsea", "Paris Saint-Germain", 0, 3] },
+  { leg1: ["Galatasaray", "Liverpool", 1, 0], leg2: ["Liverpool", "Galatasaray", 4, 0] },
+  { leg1: ["Real Madrid", "Manchester City", 3, 0], leg2: ["Manchester City", "Real Madrid", 1, 2] },
+  { leg1: ["Atalanta", "Bayern Munich", 1, 6], leg2: ["Bayern Munich", "Atalanta", 4, 1] },
+  { leg1: ["Newcastle United", "Barcelona", 1, 1], leg2: ["Barcelona", "Newcastle United", 7, 2] },
+  { leg1: ["Atletico Madrid", "Tottenham Hotspur", 5, 2], leg2: ["Tottenham Hotspur", "Atletico Madrid", 3, 2] },
+  { leg1: ["Bodo/Glimt", "Sporting CP", 3, 0], leg2: ["Sporting CP", "Bodo/Glimt", 5, 0] },
+  { leg1: ["Bayer Leverkusen", "Arsenal", 1, 1], leg2: ["Arsenal", "Bayer Leverkusen", 2, 0] },
+];
+
+export const QUARTERFINALS: KnockoutTie[] = [
+  { leg1: ["Paris Saint-Germain", "Liverpool", 2, 0], leg2: ["Liverpool", "Paris Saint-Germain", 0, 2] },
+  { leg1: ["Real Madrid", "Bayern Munich", 1, 2], leg2: ["Bayern Munich", "Real Madrid", 4, 3] },
+  { leg1: ["Barcelona", "Atletico Madrid", 0, 2], leg2: ["Atletico Madrid", "Barcelona", 1, 2] },
+  { leg1: ["Sporting CP", "Arsenal", 0, 1], leg2: ["Arsenal", "Sporting CP", 0, 0] },
+];
+
+export const SEMIFINALS: KnockoutTie[] = [
+  { leg1: ["Paris Saint-Germain", "Bayern Munich", 5, 4], leg2: ["Bayern Munich", "Paris Saint-Germain", 1, 1] },
+  { leg1: ["Atletico Madrid", "Arsenal", 1, 1], leg2: ["Arsenal", "Atletico Madrid", 1, 0] },
+];
+
+// The final: PSG 1-1 Arsenal after extra time, PSG won on penalties.
+// FixtureResult has no penalty-shootout concept, and for pick-survival
+// purposes what matters is who actually advanced (won the tie), not the
+// 90/120-minute score — so this is encoded as a HOME_WIN for PSG rather
+// than a DRAW, which would incorrectly let both sides' pickers survive.
+export const FINAL_RESULT: { home: string; away: string; homeScore: number; awayScore: number } = {
+  home: "Paris Saint-Germain",
+  away: "Arsenal",
+  homeScore: 1,
+  awayScore: 0,
+};
