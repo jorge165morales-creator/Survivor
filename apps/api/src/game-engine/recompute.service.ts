@@ -94,13 +94,17 @@ export class RecomputeService {
           let finalStatus: MembershipStatus = "ACTIVE";
 
           for (const matchday of matchdays) {
-            if (matchday.lockAt < eligibleFrom) {
-              continue; // Locked before this member was eligible to play — doesn't count.
-            }
-
             const pick = pickByMatchdayId.get(matchday.id);
 
             if (!pick) {
+              // eligibleFrom only excuses a MISSING pick — a matchday that
+              // locked before this member could have picked. It must NOT
+              // skip evaluating a pick that does exist (see below): that
+              // would let a late paidAt silently erase a real, already-
+              // resolved outcome instead of merely excusing an absence.
+              if (matchday.lockAt < eligibleFrom) {
+                continue; // Locked before this member was eligible to play — doesn't count.
+              }
               if (now >= matchday.lockAt) {
                 // Matchday locked with no pick on record — eliminated.
                 if (membership.buyBackAvailable && !buyBackConsumed) {

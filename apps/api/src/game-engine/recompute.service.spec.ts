@@ -407,5 +407,43 @@ describe("RecomputeService.recomputeLeague", () => {
         buyBackUsed: false,
       });
     });
+
+    it("still evaluates a resolved pick that exists for a matchday before eligibleFrom", async () => {
+      // Regression test: eligibleFrom must only excuse a MISSING pick, never
+      // skip evaluating a pick that's actually on record — otherwise
+      // re-confirming payment (which bumps paidAt to now, well after this
+      // long-past matchday locked) would silently hide a real loss and leave
+      // the member ACTIVE.
+      const membership = {
+        ...MEMBERSHIP,
+        hasPaid: true,
+        paidAt: new Date("2020-06-01T00:00:00Z"), // after every PAST_MATCHDAYS lockAt
+      };
+      const picks: PickRow[] = [
+        {
+          id: "pick-1",
+          matchdayId: "md-1",
+          teamId: AWAY,
+          outcome: "PENDING",
+          fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "HOME_WIN" },
+        },
+      ];
+      const { tx, pickUpdates, getMembershipUpdate } = makeTx({
+        matchdays: PAST_MATCHDAYS,
+        membership,
+        picks,
+        paymentRequired: true,
+      });
+      const service = new RecomputeService(makePrisma(tx));
+
+      await service.recomputeLeague("league-1");
+
+      expect(pickUpdates).toEqual([{ pickId: "pick-1", outcome: "LOSS" }]);
+      expect(getMembershipUpdate()).toEqual({
+        status: "ELIMINATED",
+        eliminatedAtMatchdayId: "md-1",
+        buyBackUsed: false,
+      });
+    });
   });
 });
