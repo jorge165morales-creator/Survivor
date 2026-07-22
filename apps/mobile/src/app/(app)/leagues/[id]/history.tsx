@@ -87,7 +87,7 @@ export default function PickHistoryScreen() {
 function HistoryRow({ entry }: { entry: PickHistoryEntry }) {
   const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={styles.row}>
+    <ThemedView type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
       {entry.team.crestUrl && (
         <Image source={{ uri: entry.team.crestUrl }} style={styles.crest} contentFit="contain" />
       )}
@@ -135,7 +135,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: 14,
+    borderWidth: 1.5,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     gap: Spacing.two,

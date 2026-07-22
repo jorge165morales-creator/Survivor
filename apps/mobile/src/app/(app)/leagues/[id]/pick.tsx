@@ -12,6 +12,7 @@ import type {
   TeamSummary,
 } from '@survivor/shared-types';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -133,15 +134,19 @@ export default function PickScreen() {
         </ThemedText>
 
         {isEliminated && (
-          <ThemedText type="small" style={[styles.bannerError, { color: theme.danger }]}>
-            You've been eliminated from this league and can no longer pick.
-          </ThemedText>
+          <ThemedView style={[styles.banner, { backgroundColor: theme.danger + '18', borderColor: theme.danger + '44' }]}>
+            <ThemedText type="small" style={[styles.bannerText, { color: theme.danger }]}>
+              You've been eliminated from this league and can no longer pick.
+            </ThemedText>
+          </ThemedView>
         )}
         {!isEliminated && isUnpaid && (
-          <ThemedText type="small" style={[styles.bannerError, { color: theme.buyBack }]}>
-            Waiting for the admin to confirm your payment before you can pick. You can still
-            browse the teams below.
-          </ThemedText>
+          <ThemedView style={[styles.banner, { backgroundColor: theme.buyBack + '18', borderColor: theme.buyBack + '44' }]}>
+            <ThemedText type="small" style={[styles.bannerText, { color: theme.buyBack }]}>
+              Waiting for the admin to confirm your payment before you can pick. You can still browse the
+              teams below.
+            </ThemedText>
+          </ThemedView>
         )}
 
         {isLoading ? (
@@ -283,22 +288,9 @@ function MatchdaySection({
       )}
 
       {canPick && options.fixtures.length > 0 && (
-        <Pressable
-          onPress={handleSubmit}
-          disabled={!hasChanged || isSubmitting}
-          style={[
-            styles.submitButton,
-            { backgroundColor: theme.primary },
-            (!hasChanged || isSubmitting) && styles.submitButtonDisabled,
-          ]}>
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.submitButtonText}>
-              {options.currentPick ? 'Change Pick' : 'Submit Pick'}
-            </ThemedText>
-          )}
-        </Pressable>
+        <GradientButton onPress={handleSubmit} disabled={!hasChanged} isLoading={isSubmitting} style={styles.submitButton}>
+          {options.currentPick ? 'Change Pick' : 'Submit Pick'}
+        </GradientButton>
       )}
     </ThemedView>
   );
@@ -363,15 +355,16 @@ function TeamButton({
 }) {
   const theme = useTheme();
   const disabled = !canPick || isUsed;
-  const borderColor = highlightColor ?? (isSelected ? theme.primary : undefined);
+  const borderColor = highlightColor ?? (isSelected ? theme.primary : theme.border);
   return (
     <Pressable
       onPress={() => onSelect(team.id)}
       disabled={disabled}
       style={[
         styles.teamButton,
-        borderColor && [styles.teamButtonSelected, { borderColor }],
-        disabled && !borderColor && styles.teamButtonDisabled,
+        { borderColor, backgroundColor: theme.backgroundElement },
+        (highlightColor || isSelected) && styles.teamButtonSelected,
+        disabled && !highlightColor && !isSelected && styles.teamButtonDisabled,
       ]}>
       {team.crestUrl && (
         <Image source={{ uri: team.crestUrl }} style={styles.crest} contentFit="contain" />
@@ -405,13 +398,18 @@ const styles = StyleSheet.create({
   backButton: { paddingTop: Spacing.three },
   loading: { marginTop: Spacing.five },
   title: { textAlign: 'center' },
-  bannerError: {
+  banner: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: Spacing.three,
+  },
+  bannerText: {
     textAlign: 'center',
   },
   emptyState: { paddingVertical: Spacing.five, alignItems: 'center' },
   scrollContent: { gap: Spacing.three, paddingBottom: Spacing.five },
   section: {
-    borderRadius: Spacing.three,
+    borderRadius: 18,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -429,9 +427,8 @@ const styles = StyleSheet.create({
   vs: { flexShrink: 0, width: 36, textAlign: 'center' },
   teamButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#8888',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.two,
     alignItems: 'center',
@@ -450,14 +447,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 50,
   },
-  submitButton: {
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  submitButtonDisabled: { opacity: 0.5 },
-  submitButtonText: { color: '#fff', fontWeight: '600' },
+  submitButton: { marginTop: Spacing.two },
   retryButton: { alignSelf: 'center', marginTop: Spacing.two },
   error: { textAlign: 'center' },
 });

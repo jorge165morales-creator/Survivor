@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -50,7 +51,7 @@ export default function SignInScreen() {
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
         <TextInput
           value={password}
@@ -59,7 +60,7 @@ export default function SignInScreen() {
           placeholderTextColor={theme.textSecondary}
           secureTextEntry
           autoComplete="password"
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
 
         {error && (
@@ -68,16 +69,13 @@ export default function SignInScreen() {
           </ThemedText>
         )}
 
-        <Pressable
+        <GradientButton
           onPress={handleSubmit}
-          disabled={isSubmitting || !email || !password}
-          style={[
-            styles.button,
-            { backgroundColor: theme.primary },
-            (isSubmitting || !email || !password) && styles.buttonDisabled,
-          ]}>
-          {isSubmitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.buttonText}>Sign In</ThemedText>}
-        </Pressable>
+          disabled={!email || !password}
+          isLoading={isSubmitting}
+          style={styles.button}>
+          Sign In
+        </GradientButton>
 
         <Link href="/sign-up" style={styles.link}>
           <ThemedText type="linkPrimary">Don&apos;t have an account? Sign up</ThemedText>
@@ -101,21 +99,15 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#8888',
-    borderRadius: 8,
+    borderRadius: 14,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.two + 2,
     fontSize: 16,
+    fontFamily: 'Outfit_500Medium',
   },
-  button: {
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  button: { marginTop: Spacing.two },
   link: { alignSelf: 'center', marginTop: Spacing.three },
   error: { textAlign: 'center' },
 });

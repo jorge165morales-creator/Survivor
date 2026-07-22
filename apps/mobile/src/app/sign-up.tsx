@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -55,7 +56,7 @@ export default function SignUpScreen() {
           placeholder="Display name"
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="words"
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
         <TextInput
           value={email}
@@ -65,7 +66,7 @@ export default function SignUpScreen() {
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
         <TextInput
           value={password}
@@ -74,7 +75,7 @@ export default function SignUpScreen() {
           placeholderTextColor={theme.textSecondary}
           secureTextEntry
           autoComplete="password-new"
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
 
         {error && (
@@ -83,20 +84,9 @@ export default function SignUpScreen() {
           </ThemedText>
         )}
 
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting || !canSubmit}
-          style={[
-            styles.button,
-            { backgroundColor: theme.primary },
-            (isSubmitting || !canSubmit) && styles.buttonDisabled,
-          ]}>
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.buttonText}>Create Account</ThemedText>
-          )}
-        </Pressable>
+        <GradientButton onPress={handleSubmit} disabled={!canSubmit} isLoading={isSubmitting} style={styles.button}>
+          Create Account
+        </GradientButton>
 
         <Link href="/sign-in" style={styles.link}>
           <ThemedText type="linkPrimary">Already have an account? Sign in</ThemedText>
@@ -120,21 +110,15 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#8888',
-    borderRadius: 8,
+    borderRadius: 14,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.two + 2,
     fontSize: 16,
+    fontFamily: 'Outfit_500Medium',
   },
-  button: {
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  button: { marginTop: Spacing.two },
   link: { alignSelf: 'center', marginTop: Spacing.three },
   error: { textAlign: 'center' },
 });

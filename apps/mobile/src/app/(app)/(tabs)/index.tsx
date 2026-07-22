@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { LeagueSummary } from '@survivor/shared-types';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -52,19 +53,24 @@ export default function LeagueListScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.header}>
-          <ThemedText type="subtitle">Hi, {session.user.displayName}</ThemedText>
+          <View style={styles.headerText}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
+              WELCOME BACK
+            </ThemedText>
+            <ThemedText type="subtitle">{session.user.displayName}</ThemedText>
+          </View>
           <Pressable onPress={handleSignOut}>
             <ThemedText type="linkPrimary">Sign Out</ThemedText>
           </Pressable>
         </ThemedView>
 
         <ThemedView style={styles.actionsRow}>
+          <GradientButton style={styles.createButton} onPress={() => router.push('/leagues/create')}>
+            + Create League
+          </GradientButton>
           <Pressable
-            style={[styles.actionButton, { backgroundColor: theme.primary }]}
-            onPress={() => router.push('/leagues/create')}>
-            <ThemedText style={styles.actionButtonText}>+ Create League</ThemedText>
-          </Pressable>
-          <Pressable style={styles.actionButtonSecondary} onPress={() => router.push('/leagues/join')}>
+            style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            onPress={() => router.push('/leagues/join')}>
             <ThemedText style={styles.actionButtonSecondaryText}>Join League</ThemedText>
           </Pressable>
         </ThemedView>
@@ -100,17 +106,25 @@ export default function LeagueListScreen() {
 
 function LeagueCard({ league }: { league: LeagueSummary }) {
   const theme = useTheme();
+  const isAlive = league.myStatus === 'ACTIVE';
+  const statusColor = isAlive ? theme.success : theme.danger;
   return (
-    <Pressable onPress={() => router.push(`/leagues/${league.id}`)}>
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="smallBold">{league.name}</ThemedText>
+    <Pressable onPress={() => router.push(`/leagues/${league.id}`)} style={({ pressed }) => pressed && styles.cardPressed}>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.card, { borderColor: theme.border, borderLeftColor: statusColor }]}>
+        <View style={styles.cardTop}>
+          <ThemedText type="smallBold" style={styles.cardName}>
+            {league.name}
+          </ThemedText>
+          <View style={[styles.statusPill, { backgroundColor: statusColor + '22' }]}>
+            <ThemedText type="small" style={[styles.statusPillText, { color: statusColor }]}>
+              {isAlive ? 'Alive' : league.myStatus === 'ELIMINATED' ? 'Eliminated' : ''}
+            </ThemedText>
+          </View>
+        </View>
         <ThemedText type="small" themeColor="textSecondary">
           {league.season.name} · {league.memberCount}/{league.maxMembers} members
-        </ThemedText>
-        <ThemedText
-          type="small"
-          style={{ color: league.myStatus === 'ACTIVE' ? theme.success : theme.danger }}>
-          {league.myStatus === 'ACTIVE' ? 'Alive' : league.myStatus === 'ELIMINATED' ? 'Eliminated' : ''}
         </ThemedText>
       </ThemedView>
     </Pressable>
@@ -134,29 +148,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: Spacing.three,
   },
+  headerText: { gap: 2 },
+  eyebrow: { letterSpacing: 1.5, fontFamily: 'Outfit_700Bold', fontSize: 12 },
   actionsRow: {
     flexDirection: 'row',
     gap: Spacing.two,
   },
-  actionButton: {
-    flex: 1,
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  actionButtonText: { color: '#fff', fontWeight: '600' },
+  createButton: { flex: 1 },
   actionButtonSecondary: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#8888',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 16,
     paddingVertical: Spacing.three,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtonSecondaryText: { fontWeight: '600' },
+  actionButtonSecondaryText: { fontFamily: 'Outfit_700Bold', fontSize: 16 },
   loading: { marginTop: Spacing.five },
   emptyState: { paddingVertical: Spacing.five, alignItems: 'center' },
-  list: { gap: Spacing.two, paddingBottom: Spacing.four },
-  card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.half },
+  list: { gap: Spacing.three, paddingBottom: Spacing.four },
+  cardPressed: { opacity: 0.85 },
+  card: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderLeftWidth: 4,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
+  cardName: { flex: 1, fontSize: 17 },
+  statusPill: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 3 },
+  statusPillText: { fontFamily: 'Outfit_700Bold', fontSize: 12 },
   error: { textAlign: 'center' },
 });

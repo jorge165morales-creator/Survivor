@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Switch } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { LeagueDetail, LeagueMemberSummary } from '@survivor/shared-types';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -110,23 +111,22 @@ export default function LeagueDetailScreen() {
               {league.season.name} · Invite code: {league.inviteCode}
             </ThemedText>
 
-            <ThemedView style={styles.actionsRow}>
+            <GradientButton style={styles.pickButton} onPress={() => router.push(`/leagues/${id}/pick`)}>
+              Make Pick
+            </GradientButton>
+
+            <View style={styles.actionsRow}>
               <Pressable
-                style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                onPress={() => router.push(`/leagues/${id}/pick`)}>
-                <ThemedText style={styles.actionButtonText}>Make Pick</ThemedText>
-              </Pressable>
-              <Pressable
-                style={styles.actionButtonSecondary}
+                style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
                 onPress={() => router.push(`/leagues/${id}/standings`)}>
                 <ThemedText style={styles.actionButtonSecondaryText}>Standings</ThemedText>
               </Pressable>
               <Pressable
-                style={styles.actionButtonSecondary}
+                style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
                 onPress={() => router.push(`/leagues/${id}/history`)}>
                 <ThemedText style={styles.actionButtonSecondaryText}>History</ThemedText>
               </Pressable>
-            </ThemedView>
+            </View>
 
             <Pressable style={styles.rulesButton} onPress={() => router.push('/rules')}>
               <ThemedText type="linkPrimary">Rules</ThemedText>
@@ -138,7 +138,9 @@ export default function LeagueDetailScreen() {
               </ThemedText>
             )}
 
-            <Pressable onPress={handleShare} style={[styles.shareButton, { backgroundColor: theme.primary }]}>
+            <Pressable
+              onPress={handleShare}
+              style={[styles.shareButton, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
               <ThemedText style={styles.shareButtonText}>Share Invite</ThemedText>
             </Pressable>
 
@@ -194,23 +196,33 @@ function MemberRow({
 }) {
   const theme = useTheme();
   const awaitingPayment = paymentRequired && !member.hasPaid;
+  const statusColor = awaitingPayment
+    ? theme.buyBack
+    : member.status === 'ACTIVE'
+      ? theme.success
+      : member.status === 'ELIMINATED'
+        ? theme.danger
+        : theme.textSecondary;
+  const statusLabel = awaitingPayment
+    ? 'Awaiting payment'
+    : member.status === 'ACTIVE'
+      ? 'Alive'
+      : member.status === 'ELIMINATED'
+        ? 'Eliminated'
+        : 'Left';
 
   return (
-    <ThemedView type="backgroundElement" style={styles.memberRow}>
+    <ThemedView type="backgroundElement" style={[styles.memberRow, { borderColor: theme.border }]}>
       <ThemedText type="small">
         {member.displayName}
         {member.isCommissioner ? ' (Admin)' : ''}
       </ThemedText>
-      <ThemedView style={styles.memberRowRight}>
-        <ThemedText type="small" style={{ color: awaitingPayment ? theme.buyBack : theme.textSecondary }}>
-          {awaitingPayment
-            ? 'Awaiting payment'
-            : member.status === 'ACTIVE'
-              ? 'Alive'
-              : member.status === 'ELIMINATED'
-                ? 'Eliminated'
-                : 'Left'}
-        </ThemedText>
+      <View style={styles.memberRowRight}>
+        <View style={[styles.statusPill, { backgroundColor: statusColor + '22' }]}>
+          <ThemedText type="small" style={[styles.statusPillText, { color: statusColor }]}>
+            {statusLabel}
+          </ThemedText>
+        </View>
         {paymentRequired && canTogglePaid && (
           isToggling ? (
             <ActivityIndicator size="small" />
@@ -222,7 +234,7 @@ function MemberRow({
             />
           )
         )}
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -241,46 +253,41 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.five },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.two },
+  pickButton: { marginBottom: Spacing.two },
   actionsRow: {
     flexDirection: 'row',
     gap: Spacing.two,
     marginBottom: Spacing.two,
   },
-  actionButton: {
-    flex: 1,
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  actionButtonText: { color: '#fff', fontWeight: '600' },
   actionButtonSecondary: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#8888',
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: Spacing.two + 2,
     alignItems: 'center',
   },
-  actionButtonSecondaryText: { fontWeight: '600' },
+  actionButtonSecondaryText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   rulesButton: { alignItems: 'center', paddingVertical: Spacing.one },
   eliminatedBanner: {
     textAlign: 'center',
     marginBottom: Spacing.two,
   },
   shareButton: {
-    borderRadius: 8,
-    paddingVertical: Spacing.two,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: Spacing.two + 2,
     alignItems: 'center',
     marginBottom: Spacing.three,
   },
-  shareButtonText: { color: '#fff', fontWeight: '600' },
+  shareButtonText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   membersHeading: { marginBottom: Spacing.one },
   list: { gap: Spacing.one, paddingBottom: Spacing.three },
   memberRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: 14,
+    borderWidth: 1.5,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
@@ -289,13 +296,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  statusPill: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 3 },
+  statusPillText: { fontFamily: 'Outfit_700Bold', fontSize: 12 },
   leaveButton: {
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.two,
   },
-  leaveButtonText: { fontWeight: '600' },
+  leaveButtonText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   error: { textAlign: 'center' },
 });

@@ -7,32 +7,41 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Brand gradient — the Instagram-style violet → pink → orange sweep used for
+// primary CTAs, the active tab pill, and hero accents. Same trio in both
+// themes on purpose: it's saturated enough to read on both a near-black and
+// a near-white surface, and a consistent gradient identity matters more here
+// than perfect per-theme tuning.
+export const BrandGradient = ['#7C3AED', '#EC4899', '#FB923C'] as const;
+
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#F7F9FC',
-    backgroundElement: '#EEF2F8',
-    backgroundSelected: '#DCE6F5',
-    textSecondary: '#60646C',
-    primary: '#0B2D6B',
-    primaryPressed: '#082050',
-    link: '#2C6FF0',
-    success: '#2f9e44',
-    danger: '#e5484d',
-    buyBack: '#C9962C',
+    text: '#15132A',
+    background: '#F8F7FC',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#EFE7FF',
+    textSecondary: '#6B7089',
+    primary: '#7C3AED',
+    primaryPressed: '#6425D0',
+    link: '#7C3AED',
+    success: '#16A34A',
+    danger: '#E11D48',
+    buyBack: '#D97706',
+    border: '#E7E2F5',
   },
   dark: {
-    text: '#ffffff',
-    background: '#0A1220',
-    backgroundElement: '#161F2E',
-    backgroundSelected: '#22304A',
-    textSecondary: '#B0B4BA',
-    primary: '#3D6FD6',
-    primaryPressed: '#2E5BB8',
-    link: '#5B93FF',
-    success: '#3FBE5C',
-    danger: '#F16267',
-    buyBack: '#DDAE49',
+    text: '#F5F6FC',
+    background: '#0B0E1A',
+    backgroundElement: '#161A2E',
+    backgroundSelected: '#262B4A',
+    textSecondary: '#9096B4',
+    primary: '#9F67FF',
+    primaryPressed: '#7C3AED',
+    link: '#B794FF',
+    success: '#22E584',
+    danger: '#FF4D6D',
+    buyBack: '#FFC53D',
+    border: '#262B47',
   },
 } as const;
 
@@ -40,25 +49,21 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
+    sans: 'Outfit_500Medium',
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'Outfit_500Medium',
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'Outfit_600SemiBold',
     mono: 'monospace',
   },
   web: {
-    sans: 'var(--font-display)',
+    sans: 'Outfit_500Medium, var(--font-display)',
     serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
+    rounded: 'Outfit_600SemiBold, var(--font-rounded)',
     mono: 'var(--font-mono)',
   },
 });

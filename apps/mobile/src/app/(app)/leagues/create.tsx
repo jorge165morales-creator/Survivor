@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SeasonSummary } from '@survivor/shared-types';
 
+import { GradientButton } from '@/components/gradient-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -66,7 +67,11 @@ export default function CreateLeagueScreen() {
                 onPress={() => setSeasonId(s.id)}
                 style={[
                   styles.seasonChip,
-                  seasonId === s.id && [styles.seasonChipSelected, { borderColor: theme.primary }],
+                  { borderColor: theme.border },
+                  seasonId === s.id && [
+                    styles.seasonChipSelected,
+                    { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
+                  ],
                 ]}>
                 <ThemedText type="small" themeColor={seasonId === s.id ? 'text' : 'textSecondary'}>
                   {s.name}
@@ -83,10 +88,10 @@ export default function CreateLeagueScreen() {
           onChangeText={setName}
           placeholder="League name"
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: theme.text }]}
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
 
-        <ThemedView type="backgroundElement" style={styles.buyBackRow}>
+        <ThemedView type="backgroundElement" style={[styles.buyBackRow, { borderColor: theme.border }]}>
           <ThemedView style={styles.buyBackText}>
             <ThemedText type="smallBold">Enable buy-back</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -100,7 +105,7 @@ export default function CreateLeagueScreen() {
           />
         </ThemedView>
 
-        <ThemedView type="backgroundElement" style={styles.buyBackRow}>
+        <ThemedView type="backgroundElement" style={[styles.buyBackRow, { borderColor: theme.border }]}>
           <ThemedView style={styles.buyBackText}>
             <ThemedText type="smallBold">Require payment</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -121,16 +126,13 @@ export default function CreateLeagueScreen() {
           </ThemedText>
         )}
 
-        <Pressable
+        <GradientButton
           onPress={handleSubmit}
-          disabled={isSubmitting || !seasonId || name.trim().length === 0}
-          style={[
-            styles.button,
-            { backgroundColor: theme.primary },
-            (isSubmitting || !seasonId || name.trim().length === 0) && styles.buttonDisabled,
-          ]}>
-          {isSubmitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.buttonText}>Create</ThemedText>}
-        </Pressable>
+          disabled={!seasonId || name.trim().length === 0}
+          isLoading={isSubmitting}
+          style={styles.button}>
+          Create
+        </GradientButton>
 
         <Pressable onPress={goBackOrHome} style={styles.cancel}>
           <ThemedText type="linkPrimary">Cancel</ThemedText>
@@ -155,38 +157,31 @@ const styles = StyleSheet.create({
   subtitle: { textAlign: 'center', marginBottom: Spacing.two },
   seasonList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   seasonChip: {
-    borderWidth: 1,
-    borderColor: '#8888',
+    borderWidth: 1.5,
     borderRadius: 20,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.one + 2,
   },
   seasonChipSelected: { borderWidth: 2 },
   input: {
-    borderWidth: 1,
-    borderColor: '#8888',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.two + 2,
     fontSize: 16,
+    fontFamily: 'Outfit_500Medium',
   },
   buyBackRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: Spacing.two,
+    borderRadius: 16,
+    borderWidth: 1.5,
     padding: Spacing.three,
     gap: Spacing.two,
   },
   buyBackText: { flex: 1, gap: Spacing.half },
-  button: {
-    borderRadius: 8,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  button: { marginTop: Spacing.two },
   cancel: { alignSelf: 'center', marginTop: Spacing.two },
   error: { textAlign: 'center' },
 });
