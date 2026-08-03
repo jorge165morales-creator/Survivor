@@ -46,6 +46,7 @@ export class IngestionService {
         homeTeamId: homeTeam.id,
         awayTeamId: awayTeam.id,
         kickoffAt: providerFixture.kickoffAt,
+        venue: providerFixture.venue,
         status: providerFixture.status,
         homeScore: providerFixture.homeScore,
         awayScore: providerFixture.awayScore,
@@ -53,6 +54,8 @@ export class IngestionService {
         lastSyncedAt: new Date(),
       },
       update: {
+        kickoffAt: providerFixture.kickoffAt,
+        venue: providerFixture.venue,
         status: providerFixture.status,
         homeScore: providerFixture.homeScore,
         awayScore: providerFixture.awayScore,

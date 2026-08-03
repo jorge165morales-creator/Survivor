@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { User } from "@prisma/client";
+import type { PasswordResetToken, User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -40,5 +40,26 @@ export class UsersService {
 
   linkGoogleSub(userId: string, googleSub: string): Promise<User> {
     return this.prisma.user.update({ where: { id: userId }, data: { googleSub } });
+  }
+
+  createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<PasswordResetToken> {
+    return this.prisma.passwordResetToken.create({ data: { userId, tokenHash, expiresAt } });
+  }
+
+  findValidPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | null> {
+    return this.prisma.passwordResetToken.findFirst({
+      where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+    });
+  }
+
+  async resetPasswordWithToken(tokenId: string, userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+      this.prisma.passwordResetToken.update({ where: { id: tokenId }, data: { usedAt: new Date() } }),
+    ]);
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
 }

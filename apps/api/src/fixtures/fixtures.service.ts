@@ -21,6 +21,7 @@ export class FixturesService {
       homeTeam: { id: f.homeTeam.id, name: f.homeTeam.name, shortName: f.homeTeam.shortName, crestUrl: f.homeTeam.crestUrl },
       awayTeam: { id: f.awayTeam.id, name: f.awayTeam.name, shortName: f.awayTeam.shortName, crestUrl: f.awayTeam.crestUrl },
       kickoffAt: f.kickoffAt.toISOString(),
+      venue: f.venue,
       status: f.status,
       homeScore: f.homeScore,
       awayScore: f.awayScore,

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestionService } from "./ingestion.service";
+import { SeasonSyncService } from "./season-sync.service";
 import { SPORTS_DATA_PROVIDER, type SportsDataProvider } from "./providers/sports-data.provider.interface";
 
 // How long before kickoff a fixture enters the live-poll window (catches the
@@ -33,8 +34,24 @@ export class IngestionSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ingestion: IngestionService,
+    private readonly seasonSync: SeasonSyncService,
     @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
   ) {}
+
+  // Cheap (one provider request per active season, see season-sync.service.ts)
+  // and infrequent on purpose: this is how new fixtures/kickoff times get
+  // discovered at all — e.g. once a season's draw happens, once knockout
+  // pairings are confirmed — not how live scores get polled (that's
+  // pollLiveMatchdays below, on its own tight window).
+  @Cron("0 6 * * *")
+  async syncSeasonFixtures(): Promise<void> {
+    const summaries = await this.seasonSync.syncActiveSeasons();
+    for (const summary of summaries) {
+      this.logger.log(
+        `Season sync ${summary.seasonId}: ${summary.matchdaysUpdated} matchdays, ${summary.fixturesSynced} fixtures`,
+      );
+    }
+  }
 
   @Cron("*/10 * * * *")
   async pollLiveMatchdays(): Promise<void> {
@@ -46,6 +63,10 @@ export class IngestionSchedulerService {
           gte: new Date(now - POST_KICKOFF_WINDOW_MS),
           lte: new Date(now + PRE_KICKOFF_WINDOW_MS),
         },
+        // Practice seasons resolve via practice-replay-scheduler.service.ts,
+        // not a real provider poll — their externalIds don't exist in
+        // whichever real API this.provider talks to.
+        matchday: { season: { isPractice: false } },
       },
       select: { externalId: true, matchdayId: true },
     });

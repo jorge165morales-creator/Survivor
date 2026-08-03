@@ -27,10 +27,24 @@ const STATUS_MAP: Record<string, ProviderFixture["status"]> = {
 
 interface ApiFootballFixtureResponse {
   response: Array<{
-    fixture: { id: number; date: string; status: { short: string } };
-    teams: { home: { id: number }; away: { id: number } };
+    fixture: {
+      id: number;
+      date: string;
+      status: { short: string };
+      venue: { name: string | null; city: string | null };
+    };
+    league: { round: string };
+    teams: {
+      home: { id: number; name: string; logo: string | null };
+      away: { id: number; name: string; logo: string | null };
+    };
     goals: { home: number | null; away: number | null };
   }>;
+}
+
+function formatVenue(venue: { name: string | null; city: string | null }): string | null {
+  if (venue.name && venue.city) return `${venue.name}, ${venue.city}`;
+  return venue.name ?? venue.city ?? null;
 }
 
 /**
@@ -70,7 +84,13 @@ function mapFixture(entry: ApiFootballFixtureResponse["response"][number]): Prov
     externalId: String(entry.fixture.id),
     homeTeamExternalId: String(entry.teams.home.id),
     awayTeamExternalId: String(entry.teams.away.id),
+    homeTeamName: entry.teams.home.name,
+    awayTeamName: entry.teams.away.name,
+    homeTeamCrestUrl: entry.teams.home.logo,
+    awayTeamCrestUrl: entry.teams.away.logo,
+    round: entry.league.round,
     kickoffAt: new Date(entry.fixture.date),
+    venue: formatVenue(entry.fixture.venue),
     status: STATUS_MAP[entry.fixture.status.short] ?? "LIVE",
     homeScore: entry.goals.home,
     awayScore: entry.goals.away,

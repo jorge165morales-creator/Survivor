@@ -9,10 +9,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { authApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function SignUpScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { signIn } = useSession();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -32,7 +34,7 @@ export default function SignUpScreen() {
       signIn(tokens);
       router.replace('/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -47,13 +49,13 @@ export default function SignUpScreen() {
           Survivor
         </ThemedText>
         <ThemedText type="subtitle" style={styles.subtitle}>
-          Create your account
+          {t.signUp.createAccount}
         </ThemedText>
 
         <TextInput
           value={displayName}
           onChangeText={setDisplayName}
-          placeholder="Display name"
+          placeholder={t.signUp.displayNamePlaceholder}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="words"
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
@@ -61,7 +63,7 @@ export default function SignUpScreen() {
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t.signUp.emailPlaceholder}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoComplete="email"
@@ -71,7 +73,7 @@ export default function SignUpScreen() {
         <TextInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password (min. 8 characters)"
+          placeholder={t.signUp.passwordPlaceholder}
           placeholderTextColor={theme.textSecondary}
           secureTextEntry
           autoComplete="password-new"
@@ -85,11 +87,11 @@ export default function SignUpScreen() {
         )}
 
         <GradientButton onPress={handleSubmit} disabled={!canSubmit} isLoading={isSubmitting} style={styles.button}>
-          Create Account
+          {t.signUp.submit}
         </GradientButton>
 
         <Link href="/sign-in" style={styles.link}>
-          <ThemedText type="linkPrimary">Already have an account? Sign in</ThemedText>
+          <ThemedText type="linkPrimary">{t.signUp.haveAccount}</ThemedText>
         </Link>
       </SafeAreaView>
     </ThemedView>

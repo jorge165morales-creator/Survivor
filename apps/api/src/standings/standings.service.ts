@@ -125,6 +125,7 @@ export class StandingsService {
                   crestUrl: pick.fixture.awayTeam.crestUrl,
                 },
                 kickoffAt: pick.fixture.kickoffAt.toISOString(),
+                venue: pick.fixture.venue,
                 status: pick.fixture.status,
                 homeScore: pick.fixture.homeScore,
                 awayScore: pick.fixture.awayScore,

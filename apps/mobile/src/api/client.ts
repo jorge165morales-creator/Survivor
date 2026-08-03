@@ -1,10 +1,13 @@
 import type {
   AppleSignInInput,
+  ChangePasswordInput,
   CreateLeagueInput,
+  ForgotPasswordInput,
   GoogleSignInInput,
   JoinLeagueInput,
   LoginInput,
   RegisterInput,
+  ResetPasswordInput,
   UpdateLeagueInput,
 } from "@survivor/shared-validation";
 import type {
@@ -131,6 +134,10 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     post<AuthTokensResponse>("/auth/refresh", { refreshToken }),
   logout: (accessToken: string) => post<void>("/auth/logout", {}, accessToken),
+  forgotPassword: (input: ForgotPasswordInput) => post<void>("/auth/forgot-password", input),
+  resetPassword: (input: ResetPasswordInput) => post<void>("/auth/reset-password", input),
+  changePassword: (input: ChangePasswordInput, accessToken: string) =>
+    post<void>("/auth/change-password", input, accessToken),
 };
 
 export const usersApi = {

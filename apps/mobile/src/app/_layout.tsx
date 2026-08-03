@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { LocaleProvider } from '@/i18n/locale';
 import { SessionProvider, useSession } from '@/state/session';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -32,6 +33,8 @@ function RootNavigator() {
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="reset-password" />
       </Stack.Protected>
     </Stack>
   );
@@ -56,10 +59,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SessionProvider>
-        <AnimatedSplashOverlay />
-        <RootNavigator />
-      </SessionProvider>
+      <LocaleProvider>
+        <SessionProvider>
+          <AnimatedSplashOverlay />
+          <RootNavigator />
+        </SessionProvider>
+      </LocaleProvider>
     </ThemeProvider>
   );
 }

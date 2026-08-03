@@ -9,10 +9,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { authApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function SignInScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +29,7 @@ export default function SignInScreen() {
       signIn(tokens);
       router.replace('/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -40,13 +42,13 @@ export default function SignInScreen() {
           Survivor
         </ThemedText>
         <ThemedText type="subtitle" style={styles.subtitle}>
-          Sign in
+          {t.signIn.signIn}
         </ThemedText>
 
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t.signIn.emailPlaceholder}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoComplete="email"
@@ -56,12 +58,18 @@ export default function SignInScreen() {
         <TextInput
           value={password}
           onChangeText={setPassword}
-          placeholder="Password"
+          placeholder={t.signIn.passwordPlaceholder}
           placeholderTextColor={theme.textSecondary}
           secureTextEntry
           autoComplete="password"
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
+
+        <Link href="/forgot-password" style={styles.forgotPassword}>
+          <ThemedText type="link" themeColor="textSecondary">
+            {t.signIn.forgotPassword}
+          </ThemedText>
+        </Link>
 
         {error && (
           <ThemedText type="small" style={[styles.error, { color: theme.danger }]}>
@@ -74,11 +82,11 @@ export default function SignInScreen() {
           disabled={!email || !password}
           isLoading={isSubmitting}
           style={styles.button}>
-          Sign In
+          {t.signIn.submit}
         </GradientButton>
 
         <Link href="/sign-up" style={styles.link}>
-          <ThemedText type="linkPrimary">Don&apos;t have an account? Sign up</ThemedText>
+          <ThemedText type="linkPrimary">{t.signIn.noAccount}</ThemedText>
         </Link>
       </SafeAreaView>
     </ThemedView>
@@ -109,5 +117,6 @@ const styles = StyleSheet.create({
   },
   button: { marginTop: Spacing.two },
   link: { alignSelf: 'center', marginTop: Spacing.three },
+  forgotPassword: { alignSelf: 'flex-end' },
   error: { textAlign: 'center' },
 });

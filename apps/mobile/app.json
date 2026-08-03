@@ -7,7 +7,18 @@
     "icon": "./assets/images/icon.png",
     "scheme": "survivor",
     "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.jorgemorales.survivor",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
     "android": {
+      "package": "com.jorgemorales.survivor",
       "adaptiveIcon": {
         "backgroundColor": "#0232FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,6 +54,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4c3db362-0409-43f9-b704-6aed533b4f33"
+      }
+    },
+    "owner": "jorgemc6"
   }
 }

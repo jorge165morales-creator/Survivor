@@ -1,6 +1,8 @@
-import { ConflictException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { User } from "@prisma/client";
 import { AuthService } from "./auth.service";
+import { MailService } from "../mail/mail.service";
 import { UsersService } from "../users/users.service";
 import { TokenService } from "../common/token.service";
 import { AppleAuthService } from "./providers/apple-auth.service";
@@ -28,6 +30,8 @@ describe("AuthService", () => {
   let tokens: jest.Mocked<TokenService>;
   let apple: jest.Mocked<AppleAuthService>;
   let google: jest.Mocked<GoogleAuthService>;
+  let mail: jest.Mocked<MailService>;
+  let config: jest.Mocked<ConfigService>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -41,6 +45,10 @@ describe("AuthService", () => {
       createWithGoogle: jest.fn(),
       linkAppleSub: jest.fn(),
       linkGoogleSub: jest.fn(),
+      createPasswordResetToken: jest.fn(),
+      findValidPasswordResetToken: jest.fn(),
+      resetPasswordWithToken: jest.fn(),
+      updatePasswordHash: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
 
     tokens = {
@@ -52,8 +60,13 @@ describe("AuthService", () => {
 
     apple = { verifyIdentityToken: jest.fn() } as unknown as jest.Mocked<AppleAuthService>;
     google = { verifyIdToken: jest.fn() } as unknown as jest.Mocked<GoogleAuthService>;
+    mail = {
+      sendPasswordResetEmail: jest.fn(),
+      sendOAuthOnlyAccountNotice: jest.fn(),
+    } as unknown as jest.Mocked<MailService>;
+    config = { get: jest.fn() } as unknown as jest.Mocked<ConfigService>;
 
-    service = new AuthService(users, tokens, apple, google);
+    service = new AuthService(users, tokens, apple, google, mail, config);
   });
 
   describe("register", () => {
@@ -157,6 +170,99 @@ describe("AuthService", () => {
 
       const result = await service.refresh("some-refresh-token");
       expect(result.accessToken).toBe("access-token");
+    });
+  });
+
+  describe("forgotPassword", () => {
+    it("does nothing when no account exists for the email, without signaling that to the caller", async () => {
+      users.findByEmail.mockResolvedValue(null);
+
+      await expect(service.forgotPassword("nobody@example.com")).resolves.toBeUndefined();
+      expect(mail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(users.createPasswordResetToken).not.toHaveBeenCalled();
+    });
+
+    it("sends an OAuth-only notice instead of a reset link for a passwordless account", async () => {
+      users.findByEmail.mockResolvedValue(makeUser({ passwordHash: null, googleSub: "google-sub-1" }));
+
+      await service.forgotPassword("player@example.com");
+
+      expect(mail.sendOAuthOnlyAccountNotice).toHaveBeenCalledWith("player@example.com", "Google");
+      expect(users.createPasswordResetToken).not.toHaveBeenCalled();
+    });
+
+    it("creates a reset token and emails a reset link for a password account", async () => {
+      users.findByEmail.mockResolvedValue(makeUser({ passwordHash: "hashed" }));
+
+      await service.forgotPassword("player@example.com");
+
+      expect(users.createPasswordResetToken).toHaveBeenCalledWith(
+        "user-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+      expect(mail.sendPasswordResetEmail).toHaveBeenCalledWith(
+        "player@example.com",
+        expect.stringContaining("/reset-password?token="),
+      );
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("rejects an invalid or expired token", async () => {
+      users.findValidPasswordResetToken.mockResolvedValue(null);
+
+      await expect(service.resetPassword("bad-token", "newpassword1")).rejects.toThrow(UnauthorizedException);
+      expect(users.resetPasswordWithToken).not.toHaveBeenCalled();
+    });
+
+    it("updates the password and consumes the token for a valid one", async () => {
+      users.findValidPasswordResetToken.mockResolvedValue({
+        id: "reset-1",
+        userId: "user-1",
+        tokenHash: "hash",
+        expiresAt: new Date(Date.now() + 1000),
+        usedAt: null,
+        createdAt: new Date(),
+      });
+
+      await service.resetPassword("good-token", "newpassword1");
+
+      expect(users.resetPasswordWithToken).toHaveBeenCalledWith("reset-1", "user-1", expect.any(String));
+      const [, , hashArg] = users.resetPasswordWithToken.mock.calls[0];
+      expect(hashArg).not.toBe("newpassword1");
+    });
+  });
+
+  describe("changePassword", () => {
+    it("rejects an OAuth-only account that has no password", async () => {
+      users.findById.mockResolvedValue(makeUser({ passwordHash: null, googleSub: "google-sub-1" }));
+
+      await expect(service.changePassword("user-1", "whatever", "newpassword1")).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(users.updatePasswordHash).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the current password doesn't match", async () => {
+      const hash = await bcrypt.hash("correct-password", 4);
+      users.findById.mockResolvedValue(makeUser({ passwordHash: hash }));
+
+      await expect(service.changePassword("user-1", "wrong-password", "newpassword1")).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(users.updatePasswordHash).not.toHaveBeenCalled();
+    });
+
+    it("hashes and stores the new password when the current one matches", async () => {
+      const hash = await bcrypt.hash("correct-password", 4);
+      users.findById.mockResolvedValue(makeUser({ passwordHash: hash }));
+
+      await service.changePassword("user-1", "correct-password", "newpassword1");
+
+      expect(users.updatePasswordHash).toHaveBeenCalledWith("user-1", expect.any(String));
+      const [, hashArg] = users.updatePasswordHash.mock.calls[0];
+      expect(hashArg).not.toBe("newpassword1");
     });
   });
 });

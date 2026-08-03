@@ -11,10 +11,12 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, seasonsApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function CreateLeagueScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { session } = useSession();
   const [seasons, setSeasons] = useState<SeasonSummary[] | null>(null);
   const [seasonId, setSeasonId] = useState<string | null>(null);
@@ -32,8 +34,8 @@ export default function CreateLeagueScreen() {
         setSeasons(all);
         setSeasonId(all.find((s) => s.isActive)?.id ?? all[0]?.id ?? null);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load seasons.'));
-  }, [session]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.createLeague.couldNotLoadSeasons));
+  }, [session, t]);
 
   async function handleSubmit() {
     if (!session || !seasonId) return;
@@ -46,7 +48,7 @@ export default function CreateLeagueScreen() {
       );
       router.replace(`/leagues/${league.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -56,7 +58,7 @@ export default function CreateLeagueScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.title}>
-          Create a League
+          {t.createLeague.title}
         </ThemedText>
 
         {seasons ? (
@@ -86,16 +88,16 @@ export default function CreateLeagueScreen() {
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="League name"
+          placeholder={t.createLeague.namePlaceholder}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
 
         <ThemedView type="backgroundElement" style={[styles.buyBackRow, { borderColor: theme.border }]}>
           <ThemedView style={styles.buyBackText}>
-            <ThemedText type="smallBold">Enable buy-back</ThemedText>
+            <ThemedText type="smallBold">{t.createLeague.buyBackTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Lets you grant an eliminated member one rejoin per season.
+              {t.createLeague.buyBackDescription}
             </ThemedText>
           </ThemedView>
           <Switch
@@ -107,10 +109,9 @@ export default function CreateLeagueScreen() {
 
         <ThemedView type="backgroundElement" style={[styles.buyBackRow, { borderColor: theme.border }]}>
           <ThemedView style={styles.buyBackText}>
-            <ThemedText type="smallBold">Require payment</ThemedText>
+            <ThemedText type="smallBold">{t.createLeague.paymentTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Members can join and browse, but you'll need to mark each one paid before they can
-              start picking.
+              {t.createLeague.paymentDescription}
             </ThemedText>
           </ThemedView>
           <Switch
@@ -131,11 +132,11 @@ export default function CreateLeagueScreen() {
           disabled={!seasonId || name.trim().length === 0}
           isLoading={isSubmitting}
           style={styles.button}>
-          Create
+          {t.createLeague.submit}
         </GradientButton>
 
         <Pressable onPress={goBackOrHome} style={styles.cancel}>
-          <ThemedText type="linkPrimary">Cancel</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.cancel}</ThemedText>
         </Pressable>
       </SafeAreaView>
     </ThemedView>

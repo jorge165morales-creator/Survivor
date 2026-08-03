@@ -5,8 +5,17 @@ function sampleResponse(status: string, home: number | null, away: number | null
   return {
     response: [
       {
-        fixture: { id: 12345, date: "2026-09-16T18:45:00+00:00", status: { short: status } },
-        teams: { home: { id: 111 }, away: { id: 222 } },
+        fixture: {
+          id: 12345,
+          date: "2026-09-16T18:45:00+00:00",
+          status: { short: status },
+          venue: { name: "Santiago Bernabéu", city: "Madrid" },
+        },
+        league: { round: "League Stage - 1" },
+        teams: {
+          home: { id: 111, name: "Home FC", logo: "https://example.com/home.png" },
+          away: { id: 222, name: "Away FC", logo: "https://example.com/away.png" },
+        },
         goals: { home, away },
       },
     ],
@@ -33,7 +42,13 @@ describe("ApiFootballProvider", () => {
       externalId: "12345",
       homeTeamExternalId: "111",
       awayTeamExternalId: "222",
+      homeTeamName: "Home FC",
+      awayTeamName: "Away FC",
+      homeTeamCrestUrl: "https://example.com/home.png",
+      awayTeamCrestUrl: "https://example.com/away.png",
+      round: "League Stage - 1",
       kickoffAt: new Date("2026-09-16T18:45:00+00:00"),
+      venue: "Santiago Bernabéu, Madrid",
       status: "FINISHED",
       homeScore: 2,
       awayScore: 1,

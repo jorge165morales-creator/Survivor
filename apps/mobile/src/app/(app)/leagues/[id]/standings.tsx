@@ -11,7 +11,8 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, standingsApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
-import { notify } from '@/utils/alerts';
+import { confirmAsync, notify } from '@/utils/alerts';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 const NAME_COL_WIDTH = 136;
@@ -42,6 +43,7 @@ function shortMatchdayLabel(matchday: StandingsGridMatchday): string {
 
 export default function StandingsScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [matchdays, setMatchdays] = useState<StandingsGridMatchday[] | null>(null);
@@ -66,8 +68,8 @@ export default function StandingsScreen() {
         setIsCommissioner(league.commissionerId === session.user.id);
         setBuyBackEnabled(league.buyBackEnabled);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load standings.'));
-  }, [session, id]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.standings.couldNotLoad));
+  }, [session, id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,14 +77,21 @@ export default function StandingsScreen() {
     }, [load]),
   );
 
-  async function handleGrantBuyBack(userId: string) {
+  async function handleGrantBuyBack(userId: string, playerName: string) {
     if (!session || !id) return;
+    const confirmed = await confirmAsync(
+      t.standings.grantBuyBackConfirmTitle,
+      t.standings.grantBuyBackConfirmMessage(playerName),
+      t.standings.grantBuyBackConfirmLabel,
+    );
+    if (!confirmed) return;
+
     setGrantingUserId(userId);
     try {
       await leaguesApi.grantBuyBack(id, userId, session.accessToken);
       load();
     } catch (err) {
-      notify('Could not grant buy-back', err instanceof ApiError ? err.message : undefined);
+      notify(t.standings.couldNotGrantBuyBack, err instanceof ApiError ? err.message : undefined);
     } finally {
       setGrantingUserId(null);
     }
@@ -96,11 +105,11 @@ export default function StandingsScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <Pressable onPress={goBackOrHome} style={styles.backButton}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.back}</ThemedText>
         </Pressable>
 
         <ThemedText type="title" style={styles.title}>
-          Standings
+          {t.standings.title}
         </ThemedText>
 
         {error && (
@@ -114,7 +123,7 @@ export default function StandingsScreen() {
         ) : rows.length === 0 ? (
           <ThemedView style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary">
-              No members in this league yet.
+              {t.standings.emptyState}
             </ThemedText>
           </ThemedView>
         ) : (
@@ -125,7 +134,7 @@ export default function StandingsScreen() {
                 <View style={{ width: NAME_COL_WIDTH }}>
                   <View style={[styles.nameCell, styles.headerCell]}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Player
+                      {t.standings.playerColumn}
                     </ThemedText>
                   </View>
                   {rows.map((row) => (
@@ -134,7 +143,7 @@ export default function StandingsScreen() {
                       row={row}
                       canGrantBuyBack={isCommissioner && buyBackEnabled}
                       isGranting={grantingUserId === row.userId}
-                      onGrantBuyBack={() => handleGrantBuyBack(row.userId)}
+                      onGrantBuyBack={() => handleGrantBuyBack(row.userId, row.displayName)}
                     />
                   ))}
                 </View>
@@ -176,7 +185,7 @@ export default function StandingsScreen() {
         )}
 
         <Pressable onPress={() => router.push('/rules')} style={styles.rulesButton}>
-          <ThemedText type="linkPrimary">Rules</ThemedText>
+          <ThemedText type="linkPrimary">{t.leagueDetail.rules}</ThemedText>
         </Pressable>
 
         <MatchDetailModal selected={selected} onClose={() => setSelected(null)} />
@@ -193,6 +202,7 @@ function MatchDetailModal({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const { t } = useLocale();
   if (!selected) return null;
   const { cell, playerName, roundLabel } = selected;
   const { fixture } = cell;
@@ -203,7 +213,7 @@ function MatchDetailModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <Pressable style={[styles.modalCard, { backgroundColor: theme.backgroundElement }]} onPress={() => {}}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.modalMeta}>
-            {playerName} · {roundLabel}
+            {t.standings.modalMeta(playerName, roundLabel)}
           </ThemedText>
           <View style={styles.modalTeams}>
             <ModalTeam team={fixture.homeTeam} isPick={cell.team.id === fixture.homeTeam.id} />
@@ -214,14 +224,14 @@ function MatchDetailModal({
                 </ThemedText>
               ) : (
                 <ThemedText type="small" themeColor="textSecondary">
-                  {fixture.status === 'LIVE' ? 'Live' : 'Not played yet'}
+                  {fixture.status === 'LIVE' ? t.standings.live : t.standings.notPlayedYet}
                 </ThemedText>
               )}
             </View>
             <ModalTeam team={fixture.awayTeam} isPick={cell.team.id === fixture.awayTeam.id} />
           </View>
           <Pressable onPress={onClose} style={styles.modalCloseButton}>
-            <ThemedText type="linkPrimary">Close</ThemedText>
+            <ThemedText type="linkPrimary">{t.common.close}</ThemedText>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -231,6 +241,7 @@ function MatchDetailModal({
 
 function ModalTeam({ team, isPick }: { team: { name: string; shortName: string; crestUrl: string | null }; isPick: boolean }) {
   const theme = useTheme();
+  const { t } = useLocale();
   return (
     <View style={styles.modalTeam}>
       {team.crestUrl && <Image source={{ uri: team.crestUrl }} style={styles.modalCrest} contentFit="contain" />}
@@ -239,7 +250,7 @@ function ModalTeam({ team, isPick }: { team: { name: string; shortName: string; 
       </ThemedText>
       {isPick && (
         <ThemedText type="small" style={{ color: theme.primary, fontWeight: '700' }}>
-          Picked
+          {t.standings.picked}
         </ThemedText>
       )}
     </View>
@@ -248,11 +259,12 @@ function ModalTeam({ team, isPick }: { team: { name: string; shortName: string; 
 
 function Legend() {
   const theme = useTheme();
+  const { t } = useLocale();
   return (
     <View style={styles.legend}>
-      <LegendItem color={theme.success} label="Survived" />
-      <LegendItem color={theme.danger} label="Eliminated" />
-      <LegendItem color={theme.textSecondary} label="Pending" />
+      <LegendItem color={theme.success} label={t.standings.legendSurvived} />
+      <LegendItem color={theme.danger} label={t.standings.legendEliminated} />
+      <LegendItem color={theme.textSecondary} label={t.standings.legendPending} />
     </View>
   );
 }
@@ -280,6 +292,7 @@ function NameCell({
   onGrantBuyBack: () => void;
 }) {
   const theme = useTheme();
+  const { t } = useLocale();
   const isAlive = row.status === 'ACTIVE';
   const showGrantButton = canGrantBuyBack && !isAlive && !row.buyBackUsed;
   const tint = isAlive ? theme.success : theme.danger;
@@ -291,14 +304,14 @@ function NameCell({
       </ThemedText>
       <ThemedText type="small" style={{ color: tint, fontWeight: '700' }}>
         {isAlive
-          ? 'Alive'
+          ? t.status.alive
           : row.eliminatedAtMatchdaySequence
-            ? `Out — MD${row.eliminatedAtMatchdaySequence}`
-            : 'Eliminated'}
+            ? t.standings.outMatchday(row.eliminatedAtMatchdaySequence)
+            : t.status.eliminated}
       </ThemedText>
       {row.buyBackUsed && (
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-          Bought back in
+          {t.standings.boughtBackIn}
         </ThemedText>
       )}
       {showGrantButton && (
@@ -309,7 +322,7 @@ function NameCell({
           {isGranting ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <ThemedText style={styles.grantButtonText}>Grant buy-back</ThemedText>
+            <ThemedText style={styles.grantButtonText}>{t.standings.grantBuyBack}</ThemedText>
           )}
         </Pressable>
       )}

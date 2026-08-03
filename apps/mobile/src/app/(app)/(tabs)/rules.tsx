@@ -4,39 +4,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing, MaxContentWidth } from '@/constants/theme';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
-
-const RULES: { title: string; body: string }[] = [
-  {
-    title: 'Survive each matchday',
-    body: "Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The tournament runs 17 matchdays — 8 group stage, 8 play-offs, and 1 final. See how many you can survive!",
-  },
-  {
-    title: 'Missing a pick eliminates you',
-    body: 'If a matchday locks and you never submitted a pick, you are eliminated — the same as if your pick had lost.',
-  },
-  {
-    title: 'Buy-back (if enabled by your admin)',
-    body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
-  },
-  {
-    title: 'Tie-break: buy-back used',
-    body: "If two members are tied (eliminated on the same matchday, or both still alive at the end), the member who has NOT used a buy-back ranks above the one who has.",
-  },
-];
 
 export default function RulesScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.title}>
-          Rules
+          {t.rules.title}
         </ThemedText>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {RULES.map((rule, i) => (
+          {t.rules.items.map((rule, i) => (
             <View key={rule.title} style={styles.ruleRow}>
               <View style={[styles.ruleNumber, { backgroundColor: theme.primary }]}>
                 <ThemedText style={styles.ruleNumberText}>{i + 1}</ThemedText>

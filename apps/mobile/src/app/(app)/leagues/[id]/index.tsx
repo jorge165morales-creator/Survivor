@@ -12,10 +12,12 @@ import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { confirmAsync, notify } from '@/utils/alerts';
 import { goBackOrHome } from '@/utils/navigation';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function LeagueDetailScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [league, setLeague] = useState<LeagueDetail | null>(null);
@@ -28,8 +30,8 @@ export default function LeagueDetailScreen() {
     leaguesApi
       .getById(id, session.accessToken)
       .then(setLeague)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this league.'));
-  }, [session, id]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.leagueDetail.couldNotLoad));
+  }, [session, id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,9 +43,9 @@ export default function LeagueDetailScreen() {
     if (!session || !id) return;
     try {
       const { url, inviteCode } = await leaguesApi.inviteLink(id, session.accessToken);
-      await Share.share({ message: `Join my Survivor league! Invite code: ${inviteCode}\n${url}` });
+      await Share.share({ message: t.leagueDetail.shareMessage(inviteCode, url) });
     } catch (err) {
-      notify('Could not create invite link', err instanceof ApiError ? err.message : undefined);
+      notify(t.leagueDetail.couldNotCreateInviteLink, err instanceof ApiError ? err.message : undefined);
     }
   }
 
@@ -54,7 +56,7 @@ export default function LeagueDetailScreen() {
       await leaguesApi.markPaid(id, userId, hasPaid, session.accessToken);
       load();
     } catch (err) {
-      notify('Could not update payment status', err instanceof ApiError ? err.message : undefined);
+      notify(t.leagueDetail.couldNotUpdatePayment, err instanceof ApiError ? err.message : undefined);
     } finally {
       setTogglingUserId(null);
     }
@@ -63,9 +65,9 @@ export default function LeagueDetailScreen() {
   async function handleLeave() {
     if (!session || !id) return;
     const confirmed = await confirmAsync(
-      'Leave league?',
-      'You can rejoin later with the invite code.',
-      'Leave',
+      t.leagueDetail.leaveConfirmTitle,
+      t.leagueDetail.leaveConfirmMessage,
+      t.leagueDetail.leaveConfirmLabel,
     );
     if (!confirmed) return;
 
@@ -74,7 +76,7 @@ export default function LeagueDetailScreen() {
       await leaguesApi.leave(id, session.accessToken);
       router.replace('/');
     } catch (err) {
-      notify('Could not leave league', err instanceof ApiError ? err.message : undefined);
+      notify(t.leagueDetail.couldNotLeave, err instanceof ApiError ? err.message : undefined);
     } finally {
       setIsLeaving(false);
     }
@@ -91,7 +93,7 @@ export default function LeagueDetailScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <Pressable onPress={goBackOrHome} style={styles.backButton}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.back}</ThemedText>
         </Pressable>
 
         {error && (
@@ -108,44 +110,44 @@ export default function LeagueDetailScreen() {
               {league.name}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-              {league.season.name} · Invite code: {league.inviteCode}
+              {t.leagueDetail.seasonAndInvite(league.season.name, league.inviteCode)}
             </ThemedText>
 
             <GradientButton style={styles.pickButton} onPress={() => router.push(`/leagues/${id}/pick`)}>
-              Make Pick
+              {t.leagueDetail.makePick}
             </GradientButton>
 
             <View style={styles.actionsRow}>
               <Pressable
                 style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
                 onPress={() => router.push(`/leagues/${id}/standings`)}>
-                <ThemedText style={styles.actionButtonSecondaryText}>Standings</ThemedText>
+                <ThemedText style={styles.actionButtonSecondaryText}>{t.leagueDetail.standings}</ThemedText>
               </Pressable>
               <Pressable
                 style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
                 onPress={() => router.push(`/leagues/${id}/history`)}>
-                <ThemedText style={styles.actionButtonSecondaryText}>History</ThemedText>
+                <ThemedText style={styles.actionButtonSecondaryText}>{t.leagueDetail.history}</ThemedText>
               </Pressable>
             </View>
 
             <Pressable style={styles.rulesButton} onPress={() => router.push('/rules')}>
-              <ThemedText type="linkPrimary">Rules</ThemedText>
+              <ThemedText type="linkPrimary">{t.leagueDetail.rules}</ThemedText>
             </Pressable>
 
             {myStatus === 'ELIMINATED' && (
               <ThemedText type="small" style={[styles.eliminatedBanner, { color: theme.danger }]}>
-                You've been eliminated from this league.
+                {t.leagueDetail.eliminatedBanner}
               </ThemedText>
             )}
 
             <Pressable
               onPress={handleShare}
               style={[styles.shareButton, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <ThemedText style={styles.shareButtonText}>Share Invite</ThemedText>
+              <ThemedText style={styles.shareButtonText}>{t.leagueDetail.shareInvite}</ThemedText>
             </Pressable>
 
             <ThemedText type="smallBold" style={styles.membersHeading}>
-              Members ({league.members.length}/{league.maxMembers})
+              {t.leagueDetail.membersHeading(league.members.length, league.maxMembers)}
             </ThemedText>
             <FlatList
               data={league.members}
@@ -170,7 +172,7 @@ export default function LeagueDetailScreen() {
                 {isLeaving ? (
                   <ActivityIndicator />
                 ) : (
-                  <ThemedText style={[styles.leaveButtonText, { color: theme.danger }]}>Leave League</ThemedText>
+                  <ThemedText style={[styles.leaveButtonText, { color: theme.danger }]}>{t.leagueDetail.leaveLeague}</ThemedText>
                 )}
               </Pressable>
             )}
@@ -195,6 +197,7 @@ function MemberRow({
   onTogglePaid: (hasPaid: boolean) => void;
 }) {
   const theme = useTheme();
+  const { t } = useLocale();
   const awaitingPayment = paymentRequired && !member.hasPaid;
   const statusColor = awaitingPayment
     ? theme.buyBack
@@ -204,18 +207,18 @@ function MemberRow({
         ? theme.danger
         : theme.textSecondary;
   const statusLabel = awaitingPayment
-    ? 'Awaiting payment'
+    ? t.status.awaitingPayment
     : member.status === 'ACTIVE'
-      ? 'Alive'
+      ? t.status.alive
       : member.status === 'ELIMINATED'
-        ? 'Eliminated'
-        : 'Left';
+        ? t.status.eliminated
+        : t.status.left;
 
   return (
     <ThemedView type="backgroundElement" style={[styles.memberRow, { borderColor: theme.border }]}>
       <ThemedText type="small">
         {member.displayName}
-        {member.isCommissioner ? ' (Admin)' : ''}
+        {member.isCommissioner ? t.leagueDetail.adminTag : ''}
       </ThemedText>
       <View style={styles.memberRowRight}>
         <View style={[styles.statusPill, { backgroundColor: statusColor + '22' }]}>

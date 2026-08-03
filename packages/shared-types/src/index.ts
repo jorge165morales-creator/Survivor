@@ -102,6 +102,7 @@ export interface FixtureSummary {
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
   kickoffAt: string; // ISO 8601
+  venue: string | null;
   status: FixtureStatus;
   homeScore: number | null;
   awayScore: number | null;
@@ -141,6 +142,7 @@ export interface AdminFixtureDetail {
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
   kickoffAt: string; // ISO 8601
+  venue: string | null;
   status: FixtureStatus;
   homeScore: number | null;
   awayScore: number | null;

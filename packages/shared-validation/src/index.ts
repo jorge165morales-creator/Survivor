@@ -34,6 +34,23 @@ export const refreshTokenSchema = z.object({
 });
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 export const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   seasonId: z.string().uuid(),
@@ -91,6 +108,7 @@ export const createFixtureSchema = z
     // refresh this fixture. Omit for leagues/matchdays without live
     // ingestion — scores are then entered via the /override endpoint instead.
     externalId: z.string().min(1).optional(),
+    venue: z.string().min(1).optional(),
   })
   .refine((data) => data.homeTeamId !== data.awayTeamId, {
     message: "homeTeamId and awayTeamId must differ",

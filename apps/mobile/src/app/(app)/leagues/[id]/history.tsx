@@ -11,17 +11,26 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { picksApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useLocale } from '@/i18n/locale';
+import type { Translations } from '@/i18n/translations';
 import { useTheme } from '@/hooks/use-theme';
 
-const OUTCOME_LABEL: Record<PickOutcome, string> = {
-  PENDING: 'Pending',
-  WIN: 'Win',
-  DRAW: 'Draw',
-  LOSS: 'Loss',
-};
+function outcomeLabel(outcome: PickOutcome, t: Translations): string {
+  switch (outcome) {
+    case 'WIN':
+      return t.history.outcomeWin;
+    case 'DRAW':
+      return t.history.outcomeDraw;
+    case 'LOSS':
+      return t.history.outcomeLoss;
+    default:
+      return t.history.outcomePending;
+  }
+}
 
 export default function PickHistoryScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [entries, setEntries] = useState<PickHistoryEntry[] | null>(null);
@@ -33,8 +42,8 @@ export default function PickHistoryScreen() {
     picksApi
       .myPicks(id, session.accessToken)
       .then((res) => setEntries(res.entries))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your pick history.'));
-  }, [session, id]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.history.couldNotLoad));
+  }, [session, id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,11 +59,11 @@ export default function PickHistoryScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <Pressable onPress={goBackOrHome} style={styles.backButton}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.back}</ThemedText>
         </Pressable>
 
         <ThemedText type="title" style={styles.title}>
-          Your Picks
+          {t.history.title}
         </ThemedText>
 
         {error && (
@@ -68,7 +77,7 @@ export default function PickHistoryScreen() {
         ) : entries.length === 0 ? (
           <ThemedView style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary">
-              You haven't made any picks yet.
+              {t.history.emptyState}
             </ThemedText>
           </ThemedView>
         ) : (
@@ -86,6 +95,7 @@ export default function PickHistoryScreen() {
 
 function HistoryRow({ entry }: { entry: PickHistoryEntry }) {
   const theme = useTheme();
+  const { t } = useLocale();
   return (
     <ThemedView type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
       {entry.team.crestUrl && (
@@ -98,7 +108,7 @@ function HistoryRow({ entry }: { entry: PickHistoryEntry }) {
         </ThemedText>
       </ThemedView>
       <ThemedText type="small" style={{ color: outcomeColor(entry.outcome, theme) }}>
-        {OUTCOME_LABEL[entry.outcome]}
+        {outcomeLabel(entry.outcome, t)}
       </ThemedText>
     </ThemedView>
   );

@@ -6,17 +6,20 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { BrandGradient, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useLocale } from '@/i18n/locale';
 
 export default function AppTabs() {
+  const { t } = useLocale();
+
   return (
     <Tabs style={styles.root}>
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>{t.tabs.home}</TabButton>
           </TabTrigger>
           <TabTrigger name="rules" href="/rules" asChild>
-            <TabButton>Rules</TabButton>
+            <TabButton>{t.tabs.rules}</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

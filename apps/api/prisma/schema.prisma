@@ -21,13 +21,29 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  leagueMemberships LeagueMembership[]
-  picks             Pick[]
-  ownedLeagues      League[]         @relation("LeagueCommissioner")
-  entitlement       UserEntitlement?
-  pushTokens        PushToken[]
+  leagueMemberships   LeagueMembership[]
+  picks               Pick[]
+  ownedLeagues        League[]             @relation("LeagueCommissioner")
+  entitlement         UserEntitlement?
+  pushTokens          PushToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([email])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  // sha256 hash of the raw token mailed to the user — only the hash is
+  // stored, same reasoning as passwordHash, so a DB read alone can't be used
+  // to reset someone's password.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model UserEntitlement {
@@ -60,6 +76,11 @@ model Season {
   name      String
   year      Int
   isActive  Boolean    @default(true)
+  // A "replay" season seeded by practice-season.service.ts from a real,
+  // already-completed CL season on a compressed schedule (see that file) —
+  // excluded from ingestion-scheduler.service.ts's live-poll window since its
+  // fixtures resolve via practice-replay-scheduler.service.ts instead.
+  isPractice Boolean   @default(false)
   matchdays Matchday[]
   teams     Team[]     @relation("SeasonTeams")
   leagues   League[]
@@ -128,6 +149,7 @@ model Fixture {
   awayTeamId         String
   awayTeam           Team           @relation("AwayTeam", fields: [awayTeamId], references: [id])
   kickoffAt          DateTime
+  venue              String?
   status             FixtureStatus  @default(SCHEDULED)
   homeScore          Int?
   awayScore          Int?
@@ -136,10 +158,28 @@ model Fixture {
   correctedByAdminId String?
   correctedAt        DateTime?
 
-  picks Pick[]
+  picks        Pick[]
+  replayResult ReplayFixtureResult?
 
   @@index([matchdayId])
   @@index([status])
+}
+
+// The real, already-known result for a practice/replay fixture (see
+// Season.isPractice), held back until revealAt so the fixture behaves like a
+// genuinely live match — SCHEDULED with no score until kickoff, then flipped
+// to FINISHED with this score by practice-replay-scheduler.service.ts. Only
+// ever created for practice-season fixtures, never for real ones.
+model ReplayFixtureResult {
+  id        String   @id @default(uuid())
+  fixtureId String   @unique
+  fixture   Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+  homeScore Int
+  awayScore Int
+  revealAt  DateTime
+  createdAt DateTime @default(now())
+
+  @@index([revealAt])
 }
 
 // ---------- Leagues (pools) ----------

@@ -1,16 +1,24 @@
-import { Body, Controller, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, HttpCode, Post, UseGuards } from "@nestjs/common";
 import {
   appleSignInSchema,
+  changePasswordSchema,
+  forgotPasswordSchema,
   googleSignInSchema,
   loginSchema,
   refreshTokenSchema,
   registerSchema,
+  resetPasswordSchema,
   type AppleSignInInput,
+  type ChangePasswordInput,
+  type ForgotPasswordInput,
   type GoogleSignInInput,
   type LoginInput,
   type RefreshTokenInput,
   type RegisterInput,
+  type ResetPasswordInput,
 } from "@survivor/shared-validation";
+import { JwtAuthGuard } from "../common/jwt-auth.guard";
+import { CurrentUserId } from "../common/current-user.decorator";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AuthService } from "./auth.service";
 
@@ -45,6 +53,28 @@ export class AuthController {
   @HttpCode(200)
   refresh(@Body(new ZodValidationPipe(refreshTokenSchema)) body: RefreshTokenInput) {
     return this.auth.refresh(body.refreshToken);
+  }
+
+  @Post("forgot-password")
+  @HttpCode(204)
+  forgotPassword(@Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput) {
+    return this.auth.forgotPassword(body.email);
+  }
+
+  @Post("reset-password")
+  @HttpCode(204)
+  resetPassword(@Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput) {
+    return this.auth.resetPassword(body.token, body.newPassword);
+  }
+
+  @Post("change-password")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(204)
+  changePassword(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
+  ) {
+    return this.auth.changePassword(userId, body.currentPassword, body.newPassword);
   }
 
   @Post("logout")

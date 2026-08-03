@@ -36,9 +36,9 @@ function reminderId(leagueId: string, matchdayId: string): string {
  */
 export async function syncPickReminder(params: {
   leagueId: string;
-  leagueName: string;
   matchdayId: string;
-  roundLabel: string;
+  title: string;
+  body: string;
   lockAt: string;
   shouldRemind: boolean;
 }): Promise<void> {
@@ -56,8 +56,8 @@ export async function syncPickReminder(params: {
   await Notifications.scheduleNotificationAsync({
     identifier: id,
     content: {
-      title: `${params.leagueName}: pick reminder`,
-      body: `${params.roundLabel} locks in 3 hours — make your pick!`,
+      title: params.title,
+      body: params.body,
     },
     trigger:
       Platform.OS === 'web'

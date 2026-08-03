@@ -5,16 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { LeagueSummary } from '@survivor/shared-types';
 
 import { GradientButton } from '@/components/gradient-button';
+import { LanguageToggle } from '@/components/language-toggle';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function LeagueListScreen() {
   const theme = useTheme();
-  const { session, signOut } = useSession();
+  const { t } = useLocale();
+  const { session } = useSession();
   const [leagues, setLeagues] = useState<LeagueSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -25,9 +28,9 @@ export default function LeagueListScreen() {
     leaguesApi
       .mine(session.accessToken)
       .then(setLeagues)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your leagues.'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t.home.couldNotLoadLeagues))
       .finally(() => setIsRefreshing(false));
-  }, [session]);
+  }, [session, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,11 +43,6 @@ export default function LeagueListScreen() {
     load();
   }
 
-  function handleSignOut() {
-    signOut();
-    router.replace('/sign-in');
-  }
-
   if (!session) {
     return null;
   }
@@ -55,23 +53,26 @@ export default function LeagueListScreen() {
         <ThemedView style={styles.header}>
           <View style={styles.headerText}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-              WELCOME BACK
+              {t.home.welcomeBack}
             </ThemedText>
             <ThemedText type="subtitle">{session.user.displayName}</ThemedText>
           </View>
-          <Pressable onPress={handleSignOut}>
-            <ThemedText type="linkPrimary">Sign Out</ThemedText>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <LanguageToggle />
+            <Pressable onPress={() => router.push('/profile')}>
+              <ThemedText type="linkPrimary">{t.home.profile}</ThemedText>
+            </Pressable>
+          </View>
         </ThemedView>
 
         <ThemedView style={styles.actionsRow}>
           <GradientButton style={styles.createButton} onPress={() => router.push('/leagues/create')}>
-            + Create League
+            {t.home.createLeague}
           </GradientButton>
           <Pressable
             style={[styles.actionButtonSecondary, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
             onPress={() => router.push('/leagues/join')}>
-            <ThemedText style={styles.actionButtonSecondaryText}>Join League</ThemedText>
+            <ThemedText style={styles.actionButtonSecondaryText}>{t.home.joinLeague}</ThemedText>
           </Pressable>
         </ThemedView>
 
@@ -86,7 +87,7 @@ export default function LeagueListScreen() {
         ) : leagues.length === 0 ? (
           <ThemedView style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary">
-              You&apos;re not in any leagues yet. Create one or join a friend&apos;s with an invite code.
+              {t.home.emptyState}
             </ThemedText>
           </ThemedView>
         ) : (
@@ -106,6 +107,7 @@ export default function LeagueListScreen() {
 
 function LeagueCard({ league }: { league: LeagueSummary }) {
   const theme = useTheme();
+  const { t } = useLocale();
   const isAlive = league.myStatus === 'ACTIVE';
   const statusColor = isAlive ? theme.success : theme.danger;
   return (
@@ -119,12 +121,12 @@ function LeagueCard({ league }: { league: LeagueSummary }) {
           </ThemedText>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '22' }]}>
             <ThemedText type="small" style={[styles.statusPillText, { color: statusColor }]}>
-              {isAlive ? 'Alive' : league.myStatus === 'ELIMINATED' ? 'Eliminated' : ''}
+              {isAlive ? t.status.alive : league.myStatus === 'ELIMINATED' ? t.status.eliminated : ''}
             </ThemedText>
           </View>
         </View>
         <ThemedText type="small" themeColor="textSecondary">
-          {league.season.name} · {league.memberCount}/{league.maxMembers} members
+          {t.home.seasonAndMembers(league.season.name, league.memberCount, league.maxMembers)}
         </ThemedText>
       </ThemedView>
     </Pressable>
@@ -149,6 +151,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
   },
   headerText: { gap: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   eyebrow: { letterSpacing: 1.5, fontFamily: 'Outfit_700Bold', fontSize: 12 },
   actionsRow: {
     flexDirection: 'row',

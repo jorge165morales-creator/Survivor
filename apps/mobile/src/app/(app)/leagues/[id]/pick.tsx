@@ -21,18 +21,20 @@ import { useSession } from '@/state/session';
 import { notify } from '@/utils/alerts';
 import { goBackOrHome } from '@/utils/navigation';
 import { syncPickReminder } from '@/utils/notifications';
+import { useLocale } from '@/i18n/locale';
+import type { Translations } from '@/i18n/translations';
 import { useTheme } from '@/hooks/use-theme';
 
-function formatCountdown(lockAt: string, now: number): string {
+function formatCountdown(lockAt: string, now: number, t: Translations): string {
   const diffMs = new Date(lockAt).getTime() - now;
-  if (diffMs <= 0) return 'Locked';
+  if (diffMs <= 0) return t.pick.locked;
   const totalMinutes = Math.floor(diffMs / 60000);
   const days = Math.floor(totalMinutes / (60 * 24));
   const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
   const minutes = totalMinutes % 60;
-  if (days > 0) return `Locks in ${days}d ${hours}h`;
-  if (hours > 0) return `Locks in ${hours}h ${minutes}m`;
-  return `Locks in ${minutes}m`;
+  if (days > 0) return t.pick.locksInDaysHours(days, hours);
+  if (hours > 0) return t.pick.locksInHoursMinutes(hours, minutes);
+  return t.pick.locksInMinutes(minutes);
 }
 
 /** Win-or-draw-survives outcome for a resolved pick, derived client-side from
@@ -46,17 +48,54 @@ function computeOutcome(pickedTeamId: string, fixture: FixtureSummary): PickOutc
   return won ? 'WIN' : 'LOSS';
 }
 
-const OUTCOME_LABEL: Record<PickOutcome, string> = {
-  PENDING: 'Picked',
-  WIN: 'Won',
-  DRAW: 'Drew',
-  LOSS: 'Lost',
-};
+function outcomeLabel(outcome: PickOutcome, t: Translations): string {
+  switch (outcome) {
+    case 'WIN':
+      return t.pick.outcomeWon;
+    case 'DRAW':
+      return t.pick.outcomeDrew;
+    case 'LOSS':
+      return t.pick.outcomeLost;
+    default:
+      return t.pick.outcomePicked;
+  }
+}
+
+/** Calendar-day key in the device's local timezone — fixtures within a
+ * matchday come back from the API already sorted by kickoffAt, so grouping
+ * by first-seen day preserves that chronological order for free. */
+function dayKeyFor(kickoffAt: string): string {
+  const d = new Date(kickoffAt);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function groupFixturesByDay(fixtures: FixtureSummary[]): { dayKey: string; fixtures: FixtureSummary[] }[] {
+  const groups = new Map<string, FixtureSummary[]>();
+  for (const fixture of fixtures) {
+    const key = dayKeyFor(fixture.kickoffAt);
+    const list = groups.get(key);
+    if (list) {
+      list.push(fixture);
+    } else {
+      groups.set(key, [fixture]);
+    }
+  }
+  return Array.from(groups.entries()).map(([dayKey, dayFixtures]) => ({ dayKey, fixtures: dayFixtures }));
+}
+
+function formatDayLabel(kickoffAt: string, locale: string): string {
+  return new Date(kickoffAt).toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function formatKickoffTime(kickoffAt: string, locale: string): string {
+  return new Date(kickoffAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+}
 
 type MatchdayEntry = { matchday: MatchdaySummary; options: PickOptionsResponse };
 
 export default function PickScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [entries, setEntries] = useState<MatchdayEntry[] | null>(null);
@@ -91,19 +130,19 @@ export default function PickScreen() {
         const options = optionsList[i];
         void syncPickReminder({
           leagueId: id,
-          leagueName: league.name,
           matchdayId: matchday.id,
-          roundLabel: matchday.roundLabel,
+          title: t.pick.reminderTitle(league.name),
+          body: t.pick.reminderBody(matchday.roundLabel),
           lockAt: options.lockAt,
           shouldRemind: !isEliminated && !isUnpaid && !options.currentPick,
         });
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load the pick screen.');
+      setError(err instanceof ApiError ? err.message : t.pick.couldNotLoad);
     } finally {
       setIsLoading(false);
     }
-  }, [session, id]);
+  }, [session, id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,25 +165,24 @@ export default function PickScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <Pressable onPress={goBackOrHome} style={styles.backButton}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.back}</ThemedText>
         </Pressable>
 
         <ThemedText type="title" style={styles.title}>
-          Make Your Picks
+          {t.pick.title}
         </ThemedText>
 
         {isEliminated && (
           <ThemedView style={[styles.banner, { backgroundColor: theme.danger + '18', borderColor: theme.danger + '44' }]}>
             <ThemedText type="small" style={[styles.bannerText, { color: theme.danger }]}>
-              You've been eliminated from this league and can no longer pick.
+              {t.pick.eliminatedBanner}
             </ThemedText>
           </ThemedView>
         )}
         {!isEliminated && isUnpaid && (
           <ThemedView style={[styles.banner, { backgroundColor: theme.buyBack + '18', borderColor: theme.buyBack + '44' }]}>
             <ThemedText type="small" style={[styles.bannerText, { color: theme.buyBack }]}>
-              Waiting for the admin to confirm your payment before you can pick. You can still browse the
-              teams below.
+              {t.pick.unpaidBanner}
             </ThemedText>
           </ThemedView>
         )}
@@ -157,13 +195,13 @@ export default function PickScreen() {
               {error}
             </ThemedText>
             <Pressable onPress={load} style={styles.retryButton}>
-              <ThemedText type="linkPrimary">Try again</ThemedText>
+              <ThemedText type="linkPrimary">{t.common.tryAgain}</ThemedText>
             </Pressable>
           </>
         ) : !entries || entries.length === 0 ? (
           <ThemedView style={styles.emptyState}>
             <ThemedText type="small" themeColor="textSecondary">
-              No matchdays have been scheduled for this season yet.
+              {t.pick.emptyState}
             </ThemedText>
           </ThemedView>
         ) : (
@@ -202,6 +240,7 @@ function MatchdaySection({
   onChanged: () => Promise<void>;
 }) {
   const theme = useTheme();
+  const { t, locale } = useLocale();
   const { session } = useSession();
   const { matchday, options } = entry;
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(options.currentPick?.teamId ?? null);
@@ -241,7 +280,7 @@ function MatchdaySection({
       }
       await onChanged();
     } catch (err) {
-      notify('Could not submit your pick', err instanceof ApiError ? err.message : undefined);
+      notify(t.pick.couldNotSubmit, err instanceof ApiError ? err.message : undefined);
     } finally {
       setIsSubmitting(false);
     }
@@ -258,38 +297,45 @@ function MatchdaySection({
               ? { color: resolvedOutcome === 'LOSS' ? theme.danger : theme.success }
               : { color: isLocked ? theme.textSecondary : theme.text }
           }>
-          {resolvedOutcome ? OUTCOME_LABEL[resolvedOutcome] : formatCountdown(options.lockAt, now)}
+          {resolvedOutcome ? outcomeLabel(resolvedOutcome, t) : formatCountdown(options.lockAt, now, t)}
         </ThemedText>
       </ThemedView>
 
       {canPick && hasNoEligibleTeams && (
         <ThemedText type="small" style={{ color: theme.danger }}>
-          You've already used every team playing this matchday — you have no valid pick and will be
-          eliminated when it locks.
+          {t.pick.noEligibleTeams}
         </ThemedText>
       )}
 
       {options.fixtures.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary" style={styles.noFixtures}>
-          Fixtures haven't been published for this matchday yet.
+          {t.pick.fixturesNotPublished}
         </ThemedText>
       ) : (
-        options.fixtures.map((fixture) => (
-          <FixtureRow
-            key={fixture.id}
-            fixture={fixture}
-            usedTeamIds={usedTeamIds}
-            selectedTeamId={selectedTeamId}
-            canPick={canPick}
-            highlightColor={resolvedOutcome ? (resolvedOutcome === 'LOSS' ? theme.danger : theme.success) : undefined}
-            onSelect={setSelectedTeamId}
-          />
+        groupFixturesByDay(options.fixtures).map((group) => (
+          <ThemedView key={group.dayKey} style={styles.dayGroup}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.dayHeader}>
+              {formatDayLabel(group.fixtures[0].kickoffAt, locale)}
+            </ThemedText>
+            {group.fixtures.map((fixture) => (
+              <FixtureRow
+                key={fixture.id}
+                fixture={fixture}
+                locale={locale}
+                usedTeamIds={usedTeamIds}
+                selectedTeamId={selectedTeamId}
+                canPick={canPick}
+                highlightColor={resolvedOutcome ? (resolvedOutcome === 'LOSS' ? theme.danger : theme.success) : undefined}
+                onSelect={setSelectedTeamId}
+              />
+            ))}
+          </ThemedView>
         ))
       )}
 
       {canPick && options.fixtures.length > 0 && (
         <GradientButton onPress={handleSubmit} disabled={!hasChanged} isLoading={isSubmitting} style={styles.submitButton}>
-          {options.currentPick ? 'Change Pick' : 'Submit Pick'}
+          {options.currentPick ? t.pick.changePick : t.pick.submitPick}
         </GradientButton>
       )}
     </ThemedView>
@@ -298,6 +344,7 @@ function MatchdaySection({
 
 function FixtureRow({
   fixture,
+  locale,
   usedTeamIds,
   selectedTeamId,
   canPick,
@@ -305,6 +352,7 @@ function FixtureRow({
   onSelect,
 }: {
   fixture: FixtureSummary;
+  locale: string;
   usedTeamIds: Set<string>;
   selectedTeamId: string | null;
   canPick: boolean;
@@ -313,27 +361,33 @@ function FixtureRow({
 }) {
   const score =
     fixture.homeScore !== null && fixture.awayScore !== null ? `${fixture.homeScore}–${fixture.awayScore}` : 'vs';
+  const meta = [formatKickoffTime(fixture.kickoffAt, locale), fixture.venue].filter(Boolean).join(' · ');
   return (
-    <ThemedView style={styles.fixtureCard}>
-      <TeamButton
-        team={fixture.homeTeam}
-        isUsed={usedTeamIds.has(fixture.homeTeam.id)}
-        isSelected={selectedTeamId === fixture.homeTeam.id}
-        canPick={canPick}
-        highlightColor={selectedTeamId === fixture.homeTeam.id ? highlightColor : undefined}
-        onSelect={onSelect}
-      />
-      <ThemedText type="small" themeColor="textSecondary" style={styles.vs}>
-        {score}
+    <ThemedView style={styles.fixtureRow}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.fixtureMeta}>
+        {meta}
       </ThemedText>
-      <TeamButton
-        team={fixture.awayTeam}
-        isUsed={usedTeamIds.has(fixture.awayTeam.id)}
-        isSelected={selectedTeamId === fixture.awayTeam.id}
-        canPick={canPick}
-        highlightColor={selectedTeamId === fixture.awayTeam.id ? highlightColor : undefined}
-        onSelect={onSelect}
-      />
+      <ThemedView style={styles.fixtureCard}>
+        <TeamButton
+          team={fixture.homeTeam}
+          isUsed={usedTeamIds.has(fixture.homeTeam.id)}
+          isSelected={selectedTeamId === fixture.homeTeam.id}
+          canPick={canPick}
+          highlightColor={selectedTeamId === fixture.homeTeam.id ? highlightColor : undefined}
+          onSelect={onSelect}
+        />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.vs}>
+          {score}
+        </ThemedText>
+        <TeamButton
+          team={fixture.awayTeam}
+          isUsed={usedTeamIds.has(fixture.awayTeam.id)}
+          isSelected={selectedTeamId === fixture.awayTeam.id}
+          canPick={canPick}
+          highlightColor={selectedTeamId === fixture.awayTeam.id ? highlightColor : undefined}
+          onSelect={onSelect}
+        />
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -354,6 +408,7 @@ function TeamButton({
   onSelect: (teamId: string) => void;
 }) {
   const theme = useTheme();
+  const { t } = useLocale();
   const disabled = !canPick || isUsed;
   const borderColor = highlightColor ?? (isSelected ? theme.primary : theme.border);
   return (
@@ -378,7 +433,7 @@ function TeamButton({
       </ThemedText>
       {isUsed && !isSelected && (
         <ThemedText type="small" themeColor="textSecondary">
-          Already used
+          {t.pick.alreadyUsed}
         </ThemedText>
       )}
     </Pressable>
@@ -419,6 +474,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noFixtures: { paddingVertical: Spacing.two },
+  dayGroup: { gap: Spacing.one },
+  dayHeader: { fontFamily: 'Outfit_700Bold', textTransform: 'capitalize' },
+  fixtureRow: { gap: 4 },
+  fixtureMeta: { textAlign: 'center' },
   fixtureCard: {
     flexDirection: 'row',
     alignItems: 'center',

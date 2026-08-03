@@ -19,6 +19,7 @@ export class AdminFixturesService {
     awayTeamId: string,
     kickoffAt: string,
     externalId?: string,
+    venue?: string,
   ): Promise<AdminFixtureDetail> {
     const matchday = await this.prisma.matchday.findUnique({ where: { id: matchdayId } });
     if (!matchday) {
@@ -30,6 +31,7 @@ export class AdminFixturesService {
         homeTeamId,
         awayTeamId,
         kickoffAt: new Date(kickoffAt),
+        venue: venue ?? null,
         // Pass the real API-Football fixture id here so the live-ingestion
         // poller (ingestion-scheduler.service.ts) picks this fixture up.
         // Left unset, a manual- prefixed id is generated instead, which can
@@ -78,6 +80,7 @@ export class AdminFixturesService {
     homeTeam: { id: string; name: string; shortName: string; crestUrl: string | null };
     awayTeam: { id: string; name: string; shortName: string; crestUrl: string | null };
     kickoffAt: Date;
+    venue: string | null;
     status: FixtureStatus;
     homeScore: number | null;
     awayScore: number | null;
@@ -89,6 +92,7 @@ export class AdminFixturesService {
       homeTeam: fixture.homeTeam,
       awayTeam: fixture.awayTeam,
       kickoffAt: fixture.kickoffAt.toISOString(),
+      venue: fixture.venue,
       status: fixture.status,
       homeScore: fixture.homeScore,
       awayScore: fixture.awayScore,

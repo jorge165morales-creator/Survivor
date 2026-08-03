@@ -10,10 +10,12 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { goBackOrHome } from '@/utils/navigation';
+import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function JoinLeagueScreen() {
   const theme = useTheme();
+  const { t } = useLocale();
   const { session } = useSession();
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function JoinLeagueScreen() {
       const league = await leaguesApi.join({ inviteCode: inviteCode.trim() }, session.accessToken);
       router.replace(`/leagues/${league.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -37,16 +39,16 @@ export default function JoinLeagueScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.title}>
-          Join a League
+          {t.joinLeague.title}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-          Enter the invite code a friend shared with you.
+          {t.joinLeague.subtitle}
         </ThemedText>
 
         <TextInput
           value={inviteCode}
           onChangeText={setInviteCode}
-          placeholder="Invite code"
+          placeholder={t.joinLeague.inviteCodePlaceholder}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -64,11 +66,11 @@ export default function JoinLeagueScreen() {
           disabled={inviteCode.trim().length === 0}
           isLoading={isSubmitting}
           style={styles.button}>
-          Join
+          {t.joinLeague.submit}
         </GradientButton>
 
         <Pressable onPress={goBackOrHome} style={styles.cancel}>
-          <ThemedText type="linkPrimary">Cancel</ThemedText>
+          <ThemedText type="linkPrimary">{t.common.cancel}</ThemedText>
         </Pressable>
       </SafeAreaView>
     </ThemedView>
