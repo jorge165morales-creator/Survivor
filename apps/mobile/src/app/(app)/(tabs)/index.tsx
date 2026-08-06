@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { LeagueSummary } from '@survivor/shared-types';
 
 import { GradientButton } from '@/components/gradient-button';
+import { HowToPlayContent } from '@/components/how-to-play-content';
 import { LanguageToggle } from '@/components/language-toggle';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -85,11 +86,9 @@ export default function LeagueListScreen() {
         {leagues === null ? (
           <ActivityIndicator style={styles.loading} />
         ) : leagues.length === 0 ? (
-          <ThemedView style={styles.emptyState}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {t.home.emptyState}
-            </ThemedText>
-          </ThemedView>
+          <ScrollView contentContainerStyle={styles.emptyState} showsVerticalScrollIndicator={false}>
+            <HowToPlayContent />
+          </ScrollView>
         ) : (
           <FlatList
             data={leagues}
@@ -168,7 +167,7 @@ const styles = StyleSheet.create({
   },
   actionButtonSecondaryText: { fontFamily: 'Outfit_700Bold', fontSize: 16 },
   loading: { marginTop: Spacing.five },
-  emptyState: { paddingVertical: Spacing.five, alignItems: 'center' },
+  emptyState: { paddingTop: Spacing.three, paddingBottom: Spacing.five },
   list: { gap: Spacing.three, paddingBottom: Spacing.four },
   cardPressed: { opacity: 0.85 },
   card: {

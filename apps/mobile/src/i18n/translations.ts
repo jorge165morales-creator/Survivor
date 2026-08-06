@@ -53,8 +53,6 @@ export const en = {
     haveAccount: 'Already have an account? Sign in',
   },
   howToPlay: {
-    title: 'How to Play',
-    intro: "Survivor is a Champions League elimination pool. Here's everything you need to get started.",
     steps: [
       {
         title: 'Create or join a league',
@@ -70,8 +68,6 @@ export const en = {
       },
     ],
     challengeNote: "17 matchdays stand between you and the Final. One wrong pick and you're out. Can YOU survive them all?",
-    getStarted: 'Create Account',
-    haveAccount: 'Already have an account? Sign in',
   },
   home: {
     welcomeBack: 'WELCOME BACK',
@@ -79,7 +75,6 @@ export const en = {
     createLeague: '+ Create League',
     joinLeague: 'Join League',
     couldNotLoadLeagues: 'Could not load your leagues.',
-    emptyState: "You're not in any leagues yet. Create one or join a friend's with an invite code.",
     seasonAndMembers: (seasonName: string, count: number, max: number) => `${seasonName} · ${count}/${max} members`,
     profile: 'Profile',
   },
@@ -264,8 +259,6 @@ export const es: typeof en = {
     haveAccount: '¿Ya tienes una cuenta? Inicia sesión',
   },
   howToPlay: {
-    title: 'Cómo Jugar',
-    intro: 'Survivor es una quiniela de eliminación de la Champions League. Aquí tienes todo lo que necesitas para empezar.',
     steps: [
       {
         title: 'Crea o únete a una liga',
@@ -281,8 +274,6 @@ export const es: typeof en = {
       },
     ],
     challengeNote: '17 jornadas te separan de la Final. Una selección equivocada y quedas fuera. ¿Podrás sobrevivirlas todas?',
-    getStarted: 'Crear Cuenta',
-    haveAccount: '¿Ya tienes una cuenta? Inicia sesión',
   },
   home: {
     welcomeBack: 'BIENVENIDO DE NUEVO',
@@ -290,7 +281,6 @@ export const es: typeof en = {
     createLeague: '+ Crear Liga',
     joinLeague: 'Unirse a Liga',
     couldNotLoadLeagues: 'No se pudieron cargar tus ligas.',
-    emptyState: 'Todavía no estás en ninguna liga. Crea una o únete a la de un amigo con un código de invitación.',
     seasonAndMembers: (seasonName: string, count: number, max: number) => `${seasonName} · ${count}/${max} miembros`,
     profile: 'Perfil',
   },
