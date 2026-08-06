@@ -2,6 +2,7 @@ import { Tabs, TabList, TabTrigger, TabSlot, TabTriggerSlotProps, TabListProps }
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -58,8 +59,9 @@ export function TabButton({
 }
 
 export function CustomTabList(props: TabListProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View {...props} style={styles.tabListContainer}>
+    <View {...props} style={[styles.tabListContainer, { paddingTop: insets.top + Spacing.three }]}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
           Survivor

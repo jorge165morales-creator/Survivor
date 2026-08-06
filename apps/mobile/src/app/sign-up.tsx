@@ -17,6 +17,7 @@ export default function SignUpScreen() {
   const { t } = useLocale();
   const { signIn } = useSession();
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function SignUpScreen() {
         email: email.trim(),
         password,
         displayName: displayName.trim(),
+        username: username.trim(),
       });
       signIn(tokens);
       router.replace('/');
@@ -40,7 +42,8 @@ export default function SignUpScreen() {
     }
   }
 
-  const canSubmit = displayName.trim().length > 0 && email.length > 0 && password.length >= 8;
+  const isValidUsername = /^[a-zA-Z0-9_]{3,20}$/.test(username.trim());
+  const canSubmit = displayName.trim().length > 0 && isValidUsername && email.length > 0 && password.length >= 8;
 
   return (
     <ThemedView style={styles.container}>
@@ -58,6 +61,15 @@ export default function SignUpScreen() {
           placeholder={t.signUp.displayNamePlaceholder}
           placeholderTextColor={theme.textSecondary}
           autoCapitalize="words"
+          style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+        />
+        <TextInput
+          value={username}
+          onChangeText={(value) => setUsername(value.replace(/\s/g, ''))}
+          placeholder={t.signUp.usernamePlaceholder}
+          placeholderTextColor={theme.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
         <TextInput

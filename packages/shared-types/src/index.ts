@@ -18,6 +18,7 @@ export type PickOutcome = "PENDING" | "WIN" | "DRAW" | "LOSS";
 export interface AuthUser {
   id: string;
   email: string;
+  username: string;
   displayName: string;
   avatarUrl: string | null;
 }

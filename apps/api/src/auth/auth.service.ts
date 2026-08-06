@@ -21,6 +21,7 @@ function toAuthUser(user: User): AuthUser {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
   };
@@ -45,13 +46,17 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, displayName: string): Promise<AuthTokensResponse> {
+  async register(email: string, password: string, displayName: string, username: string): Promise<AuthTokensResponse> {
     const existing = await this.users.findByEmail(email);
     if (existing) {
       throw new ConflictException("An account with this email already exists");
     }
+    const usernameTaken = await this.users.findByUsername(username);
+    if (usernameTaken) {
+      throw new ConflictException("This username is already taken");
+    }
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user = await this.users.createWithPassword(email, passwordHash, displayName);
+    const user = await this.users.createWithPassword(email, passwordHash, displayName, username);
     return this.issueTokens(user);
   }
 

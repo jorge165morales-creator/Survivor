@@ -22,16 +22,36 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { googleSub } });
   }
 
-  createWithPassword(email: string, passwordHash: string, displayName: string): Promise<User> {
-    return this.prisma.user.create({ data: { email, passwordHash, displayName } });
+  findByUsername(username: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { username } });
   }
 
-  createWithApple(appleSub: string, email: string, displayName: string): Promise<User> {
-    return this.prisma.user.create({ data: { appleSub, email, displayName } });
+  createWithPassword(email: string, passwordHash: string, displayName: string, username: string): Promise<User> {
+    return this.prisma.user.create({ data: { email, passwordHash, displayName, username } });
   }
 
-  createWithGoogle(googleSub: string, email: string, displayName: string): Promise<User> {
-    return this.prisma.user.create({ data: { googleSub, email, displayName } });
+  async createWithApple(appleSub: string, email: string, displayName: string): Promise<User> {
+    const username = await this.generateUniqueUsername(displayName || email);
+    return this.prisma.user.create({ data: { appleSub, email, displayName, username } });
+  }
+
+  async createWithGoogle(googleSub: string, email: string, displayName: string): Promise<User> {
+    const username = await this.generateUniqueUsername(displayName || email);
+    return this.prisma.user.create({ data: { googleSub, email, displayName, username } });
+  }
+
+  // Apple/Google sign-in don't collect a username, so derive one from
+  // whatever name/email they did provide and disambiguate on collision —
+  // this is a fallback handle, not user-facing branding.
+  private async generateUniqueUsername(seed: string): Promise<string> {
+    const base = seed.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 15) || "player";
+    let candidate = base;
+    let suffix = 0;
+    while (await this.findByUsername(candidate)) {
+      suffix += 1;
+      candidate = `${base}${suffix}`;
+    }
+    return candidate;
   }
 
   linkAppleSub(userId: string, appleSub: string): Promise<User> {

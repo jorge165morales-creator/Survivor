@@ -46,9 +46,31 @@ export const en = {
   signUp: {
     createAccount: 'Create your account',
     displayNamePlaceholder: 'Display name',
+    usernamePlaceholder: 'Username (letters, numbers, underscores)',
     emailPlaceholder: 'Email',
     passwordPlaceholder: 'Password (min. 8 characters)',
     submit: 'Create Account',
+    haveAccount: 'Already have an account? Sign in',
+  },
+  howToPlay: {
+    title: 'How to Play',
+    intro: "Survivor is a Champions League elimination pool. Here's everything you need to get started.",
+    steps: [
+      {
+        title: 'Create or join a league',
+        body: "Start your own league and invite friends with a code, or join one they've already created. Each league runs independently — your picks, your rivals, your standings.",
+      },
+      {
+        title: 'Pick a team every matchday',
+        body: "Each matchday, pick one team you think won't lose. A win or draw keeps you alive — a loss eliminates you. You can never pick the same team twice, so choose carefully. Full rules are always in the Rules tab.",
+      },
+      {
+        title: 'See it in action',
+        body: "Matchday 1: you pick Real Madrid. They win — you survive.\nMatchday 2: you can't pick Real Madrid again, so you pick Bayern instead. They draw — still alive.\nMatchday 3: you pick Arsenal. They lose — you're eliminated.",
+      },
+    ],
+    challengeNote: "17 matchdays stand between you and the Final. One wrong pick and you're out. Can YOU survive them all?",
+    getStarted: 'Create Account',
     haveAccount: 'Already have an account? Sign in',
   },
   home: {
@@ -235,9 +257,31 @@ export const es: typeof en = {
   signUp: {
     createAccount: 'Crea tu cuenta',
     displayNamePlaceholder: 'Nombre para mostrar',
+    usernamePlaceholder: 'Nombre de usuario (letras, números, guion bajo)',
     emailPlaceholder: 'Correo electrónico',
     passwordPlaceholder: 'Contraseña (mín. 8 caracteres)',
     submit: 'Crear cuenta',
+    haveAccount: '¿Ya tienes una cuenta? Inicia sesión',
+  },
+  howToPlay: {
+    title: 'Cómo Jugar',
+    intro: 'Survivor es una quiniela de eliminación de la Champions League. Aquí tienes todo lo que necesitas para empezar.',
+    steps: [
+      {
+        title: 'Crea o únete a una liga',
+        body: 'Crea tu propia liga e invita a tus amigos con un código, o únete a una que ya hayan creado. Cada liga funciona de forma independiente — tus selecciones, tus rivales, tu clasificación.',
+      },
+      {
+        title: 'Elige un equipo cada jornada',
+        body: 'Cada jornada, elige un equipo que creas que no perderá. Una victoria o un empate te mantiene con vida — una derrota te elimina. Nunca puedes elegir el mismo equipo dos veces, así que elige con cuidado. Las reglas completas siempre están en la pestaña Reglas.',
+      },
+      {
+        title: 'Míralo en acción',
+        body: 'Jornada 1: eliges Real Madrid. Ganan — sobrevives.\nJornada 2: no puedes volver a elegir Real Madrid, así que eliges Bayern. Empatan — sigues con vida.\nJornada 3: eliges Arsenal. Pierden — quedas eliminado.',
+      },
+    ],
+    challengeNote: '17 jornadas te separan de la Final. Una selección equivocada y quedas fuera. ¿Podrás sobrevivirlas todas?',
+    getStarted: 'Crear Cuenta',
     haveAccount: '¿Ya tienes una cuenta? Inicia sesión',
   },
   home: {

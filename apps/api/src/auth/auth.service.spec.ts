@@ -16,6 +16,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     passwordHash: null,
     appleSub: null,
     googleSub: null,
+    username: "player1",
     displayName: "Player One",
     avatarUrl: null,
     isAdmin: false,
@@ -40,6 +41,7 @@ describe("AuthService", () => {
       findByEmail: jest.fn(),
       findByAppleSub: jest.fn(),
       findByGoogleSub: jest.fn(),
+      findByUsername: jest.fn(),
       createWithPassword: jest.fn(),
       createWithApple: jest.fn(),
       createWithGoogle: jest.fn(),
@@ -72,29 +74,46 @@ describe("AuthService", () => {
   describe("register", () => {
     it("rejects an email that is already registered", async () => {
       users.findByEmail.mockResolvedValue(makeUser());
-      await expect(service.register("player@example.com", "password123", "Player One")).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.register("player@example.com", "password123", "Player One", "player1"),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("rejects a username that is already taken", async () => {
+      users.findByEmail.mockResolvedValue(null);
+      users.findByUsername.mockResolvedValue(makeUser());
+      await expect(
+        service.register("player@example.com", "password123", "Player One", "player1"),
+      ).rejects.toThrow(ConflictException);
+      expect(users.createWithPassword).not.toHaveBeenCalled();
     });
 
     it("creates a new user with a hashed password and returns tokens", async () => {
       users.findByEmail.mockResolvedValue(null);
+      users.findByUsername.mockResolvedValue(null);
       const created = makeUser({ passwordHash: "hashed" });
       users.createWithPassword.mockResolvedValue(created);
 
-      const result = await service.register("player@example.com", "password123", "Player One");
+      const result = await service.register("player@example.com", "password123", "Player One", "player1");
 
       expect(users.createWithPassword).toHaveBeenCalledWith(
         "player@example.com",
         expect.any(String),
         "Player One",
+        "player1",
       );
       const [, hashArg] = users.createWithPassword.mock.calls[0];
       expect(hashArg).not.toBe("password123");
       expect(result).toEqual({
         accessToken: "access-token",
         refreshToken: "refresh-token",
-        user: { id: created.id, email: created.email, displayName: created.displayName, avatarUrl: null },
+        user: {
+          id: created.id,
+          email: created.email,
+          username: created.username,
+          displayName: created.displayName,
+          avatarUrl: null,
+        },
       });
     });
   });
