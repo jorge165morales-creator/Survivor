@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, TextInput } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientButton } from '@/components/gradient-button';
@@ -88,6 +88,7 @@ export default function ProfileScreen() {
           <ThemedText type="linkPrimary">{t.common.back}</ThemedText>
         </Pressable>
 
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemedText type="title" style={styles.title}>
           {t.profile.title}
         </ThemedText>
@@ -186,6 +187,7 @@ export default function ProfileScreen() {
             </ThemedText>
           </Pressable>
         </ThemedView>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -202,6 +204,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   backButton: { paddingTop: Spacing.three },
+  scrollContent: { gap: Spacing.three, paddingBottom: Spacing.five },
   title: { textAlign: 'center' },
   section: {
     borderRadius: 18,
