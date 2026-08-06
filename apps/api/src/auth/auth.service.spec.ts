@@ -51,6 +51,7 @@ describe("AuthService", () => {
       findValidPasswordResetToken: jest.fn(),
       resetPasswordWithToken: jest.fn(),
       updatePasswordHash: jest.fn(),
+      anonymizeAccount: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
 
     tokens = {
@@ -282,6 +283,40 @@ describe("AuthService", () => {
       expect(users.updatePasswordHash).toHaveBeenCalledWith("user-1", expect.any(String));
       const [, hashArg] = users.updatePasswordHash.mock.calls[0];
       expect(hashArg).not.toBe("newpassword1");
+    });
+  });
+
+  describe("deleteAccount", () => {
+    it("requires the current password for a password account", async () => {
+      users.findById.mockResolvedValue(makeUser({ passwordHash: "hashed" }));
+
+      await expect(service.deleteAccount("user-1")).rejects.toThrow(BadRequestException);
+      expect(users.anonymizeAccount).not.toHaveBeenCalled();
+    });
+
+    it("rejects an incorrect current password", async () => {
+      const hash = await bcrypt.hash("correct-password", 4);
+      users.findById.mockResolvedValue(makeUser({ passwordHash: hash }));
+
+      await expect(service.deleteAccount("user-1", "wrong-password")).rejects.toThrow(UnauthorizedException);
+      expect(users.anonymizeAccount).not.toHaveBeenCalled();
+    });
+
+    it("anonymizes the account when the current password matches", async () => {
+      const hash = await bcrypt.hash("correct-password", 4);
+      users.findById.mockResolvedValue(makeUser({ passwordHash: hash }));
+
+      await service.deleteAccount("user-1", "correct-password");
+
+      expect(users.anonymizeAccount).toHaveBeenCalledWith("user-1");
+    });
+
+    it("doesn't require a password for an OAuth-only account", async () => {
+      users.findById.mockResolvedValue(makeUser({ passwordHash: null, googleSub: "google-sub-1" }));
+
+      await service.deleteAccount("user-1");
+
+      expect(users.anonymizeAccount).toHaveBeenCalledWith("user-1");
     });
   });
 });

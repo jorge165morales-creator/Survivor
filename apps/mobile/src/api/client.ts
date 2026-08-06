@@ -2,6 +2,7 @@ import type {
   AppleSignInInput,
   ChangePasswordInput,
   CreateLeagueInput,
+  DeleteAccountInput,
   ForgotPasswordInput,
   GoogleSignInInput,
   JoinLeagueInput,
@@ -126,6 +127,10 @@ async function del(path: string, accessToken: string): Promise<void> {
   await request<void>("DELETE", path, undefined, accessToken);
 }
 
+async function delWithBody<TResponse>(path: string, body: unknown, accessToken: string): Promise<TResponse> {
+  return request<TResponse>("DELETE", path, body, accessToken);
+}
+
 export const authApi = {
   register: (input: RegisterInput) => post<AuthTokensResponse>("/auth/register", input),
   login: (input: LoginInput) => post<AuthTokensResponse>("/auth/login", input),
@@ -138,6 +143,8 @@ export const authApi = {
   resetPassword: (input: ResetPasswordInput) => post<void>("/auth/reset-password", input),
   changePassword: (input: ChangePasswordInput, accessToken: string) =>
     post<void>("/auth/change-password", input, accessToken),
+  deleteAccount: (input: DeleteAccountInput, accessToken: string) =>
+    delWithBody<void>("/auth/account", input, accessToken),
 };
 
 export const usersApi = {

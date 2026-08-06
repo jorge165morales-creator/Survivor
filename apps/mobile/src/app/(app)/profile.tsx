@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { authApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
+import { confirmAsync } from '@/utils/alerts';
 import { goBackOrHome } from '@/utils/navigation';
 import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +24,9 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!session) {
     return null;
@@ -52,6 +56,28 @@ export default function ProfileScreen() {
       setError(err instanceof ApiError ? err.message : t.profile.couldNotChange);
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!session) return;
+    setDeleteError(null);
+    const confirmed = await confirmAsync(
+      t.profile.deleteAccountConfirmTitle,
+      t.profile.deleteAccountConfirmMessage,
+      t.profile.deleteAccountConfirmLabel,
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await authApi.deleteAccount({ currentPassword: deletePassword || undefined }, session.accessToken);
+      signOut();
+      router.replace('/sign-in');
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : t.profile.couldNotDeleteAccount);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -126,6 +152,40 @@ export default function ProfileScreen() {
             {t.profile.submit}
           </GradientButton>
         </ThemedView>
+
+        <ThemedView type="backgroundElement" style={[styles.section, { borderColor: theme.danger }]}>
+          <ThemedText type="smallBold" style={{ color: theme.danger }}>
+            {t.profile.deleteAccountTitle}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t.profile.deleteAccountWarning}
+          </ThemedText>
+
+          <TextInput
+            value={deletePassword}
+            onChangeText={setDeletePassword}
+            placeholder={t.profile.currentPasswordPlaceholder}
+            placeholderTextColor={theme.textSecondary}
+            secureTextEntry
+            autoComplete="password"
+            style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
+          />
+
+          {deleteError && (
+            <ThemedText type="small" style={[styles.message, { color: theme.danger }]}>
+              {deleteError}
+            </ThemedText>
+          )}
+
+          <Pressable
+            onPress={handleDeleteAccount}
+            disabled={isDeleting}
+            style={[styles.deleteButton, { borderColor: theme.danger }, isDeleting && styles.disabled]}>
+            <ThemedText type="smallBold" style={{ color: theme.danger }}>
+              {t.profile.deleteAccountSubmit}
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -160,4 +220,12 @@ const styles = StyleSheet.create({
   },
   button: { marginTop: Spacing.one },
   message: { textAlign: 'center' },
+  deleteButton: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: Spacing.two + 2,
+    alignItems: 'center',
+    marginTop: Spacing.one,
+  },
+  disabled: { opacity: 0.5 },
 });

@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, HttpCode, Post, UseGuards } from "@nestjs/common";
 import {
   appleSignInSchema,
   changePasswordSchema,
+  deleteAccountSchema,
   forgotPasswordSchema,
   googleSignInSchema,
   loginSchema,
@@ -10,6 +11,7 @@ import {
   resetPasswordSchema,
   type AppleSignInInput,
   type ChangePasswordInput,
+  type DeleteAccountInput,
   type ForgotPasswordInput,
   type GoogleSignInInput,
   type LoginInput,
@@ -75,6 +77,16 @@ export class AuthController {
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
   ) {
     return this.auth.changePassword(userId, body.currentPassword, body.newPassword);
+  }
+
+  @Delete("account")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(204)
+  deleteAccount(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(deleteAccountSchema)) body: DeleteAccountInput,
+  ) {
+    return this.auth.deleteAccount(userId, body.currentPassword);
   }
 
   @Post("logout")

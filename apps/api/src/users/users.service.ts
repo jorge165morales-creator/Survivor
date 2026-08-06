@@ -82,4 +82,27 @@ export class UsersService {
   async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
+
+  // Scrubs PII rather than hard-deleting the row: league standings, pick
+  // history, and any leagues this user commissions must keep working for
+  // other members, so the id and its relations stay intact — only the
+  // identifying fields are wiped.
+  async anonymizeAccount(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.pushToken.deleteMany({ where: { userId } }),
+      this.prisma.passwordResetToken.deleteMany({ where: { userId } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: `deleted-${userId}@survivor.invalid`,
+          username: `deleted_${userId.slice(0, 8)}`,
+          displayName: "Deleted User",
+          passwordHash: null,
+          appleSub: null,
+          googleSub: null,
+          avatarUrl: null,
+        },
+      }),
+    ]);
+  }
 }

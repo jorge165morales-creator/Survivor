@@ -89,6 +89,14 @@ export const en = {
     passwordsDontMatch: 'Passwords do not match.',
     success: 'Your password has been changed.',
     couldNotChange: 'Could not change your password.',
+    deleteAccountTitle: 'Delete account',
+    deleteAccountWarning:
+      "This permanently deletes your personal info (email, name, username, password). Your past picks and league history stay visible to other members, but no longer identify you. This can't be undone.",
+    deleteAccountSubmit: 'Delete My Account',
+    deleteAccountConfirmTitle: 'Delete your account?',
+    deleteAccountConfirmMessage: "This can't be undone. You'll be signed out immediately.",
+    deleteAccountConfirmLabel: 'Delete',
+    couldNotDeleteAccount: 'Could not delete your account.',
   },
   createLeague: {
     title: 'Create a League',
@@ -295,6 +303,14 @@ export const es: typeof en = {
     passwordsDontMatch: 'Las contraseñas no coinciden.',
     success: 'Tu contraseña ha sido cambiada.',
     couldNotChange: 'No se pudo cambiar tu contraseña.',
+    deleteAccountTitle: 'Eliminar cuenta',
+    deleteAccountWarning:
+      'Esto elimina permanentemente tu información personal (correo, nombre, usuario, contraseña). Tus selecciones e historial de liga anteriores seguirán siendo visibles para otros miembros, pero ya no te identificarán. Esto no se puede deshacer.',
+    deleteAccountSubmit: 'Eliminar Mi Cuenta',
+    deleteAccountConfirmTitle: '¿Eliminar tu cuenta?',
+    deleteAccountConfirmMessage: 'Esto no se puede deshacer. Se cerrará tu sesión de inmediato.',
+    deleteAccountConfirmLabel: 'Eliminar',
+    couldNotDeleteAccount: 'No se pudo eliminar tu cuenta.',
   },
   createLeague: {
     title: 'Crear una Liga',

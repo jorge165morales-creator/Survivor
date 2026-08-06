@@ -159,4 +159,21 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
     await this.users.updatePasswordHash(userId, passwordHash);
   }
+
+  async deleteAccount(userId: string, currentPassword?: string): Promise<void> {
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException("User no longer exists");
+    }
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        throw new BadRequestException("Enter your current password to delete your account");
+      }
+      const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!matches) {
+        throw new UnauthorizedException("Current password is incorrect");
+      }
+    }
+    await this.users.anonymizeAccount(userId);
+  }
 }

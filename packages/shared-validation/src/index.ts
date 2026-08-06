@@ -56,6 +56,13 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
+// currentPassword is only required for password accounts — Apple/Google
+// sign-in accounts have no password to confirm.
+export const deleteAccountSchema = z.object({
+  currentPassword: z.string().min(1).optional(),
+});
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
 export const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   seasonId: z.string().uuid(),
