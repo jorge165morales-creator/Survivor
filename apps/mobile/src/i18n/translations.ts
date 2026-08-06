@@ -45,7 +45,7 @@ export const en = {
   },
   signUp: {
     createAccount: 'Create your account',
-    displayNamePlaceholder: 'Display name',
+    displayNamePlaceholder: 'Name (Display Name)',
     usernamePlaceholder: 'Username (letters, numbers, underscores)',
     emailPlaceholder: 'Email',
     passwordPlaceholder: 'Password (min. 8 characters)',
@@ -259,7 +259,7 @@ export const es: typeof en = {
   },
   signUp: {
     createAccount: 'Crea tu cuenta',
-    displayNamePlaceholder: 'Nombre para mostrar',
+    displayNamePlaceholder: 'Nombre (Nombre para mostrar)',
     usernamePlaceholder: 'Nombre de usuario (letras, números, guion bajo)',
     emailPlaceholder: 'Correo electrónico',
     passwordPlaceholder: 'Contraseña (mín. 8 caracteres)',
