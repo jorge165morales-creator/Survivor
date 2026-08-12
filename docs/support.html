@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survivor Football — Support</title>
+<meta name="description" content="Support and contact information for Survivor Football, a Champions League elimination-pool app.">
+<style>
+  :root {
+    --bg: #F5F6FF;
+    --surface: #FFFFFF;
+    --text: #0B0E2E;
+    --text-secondary: #5A5F86;
+    --accent: #0232FF;
+    --accent-2: #00EEFF;
+    --border: #E1E4FA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #05081F;
+      --surface: #10153E;
+      --text: #F5F6FC;
+      --text-secondary: #9099C4;
+      --accent: #4E6BFF;
+      --accent-2: #00EEFF;
+      --border: #232B66;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #05081F;
+    --surface: #10153E;
+    --text: #F5F6FC;
+    --text-secondary: #9099C4;
+    --accent: #4E6BFF;
+    --accent-2: #00EEFF;
+    --border: #232B66;
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F6FF;
+    --surface: #FFFFFF;
+    --text: #0B0E2E;
+    --text-secondary: #5A5F86;
+    --accent: #0232FF;
+    --accent-2: #00EEFF;
+    --border: #E1E4FA;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "Avenir Next", "Century Gothic", "Segoe UI", ui-sans-serif, system-ui, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0 20px;
+  }
+
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 56px 0 96px;
+  }
+
+  .rule {
+    height: 3px;
+    width: 64px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    margin-bottom: 24px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 36px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+
+  .intro {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--text);
+    margin: 0 0 40px;
+    max-width: 62ch;
+  }
+
+  section {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+  }
+
+  p {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--text);
+    max-width: 62ch;
+    margin: 0 0 14px;
+  }
+
+  p:last-child { margin-bottom: 0; }
+
+  a {
+    color: var(--accent);
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
+  }
+  a:hover { text-decoration-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .contact-card {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .contact-card h2 { margin-bottom: 8px; }
+  .contact-card p { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="rule"></div>
+  <p class="eyebrow">Survivor Football</p>
+  <h1>Support</h1>
+
+  <p class="intro">Need help with Survivor Football? Start here, or reach out directly below.</p>
+
+  <section>
+    <h2>Getting started</h2>
+    <p>Create a league from the Leagues tab, then share the invite code with friends so they can join. Each matchday, pick one team you think won't lose — an outright loss eliminates you, a draw keeps you alive. See the in-app <strong>Rules</strong> tab for full details on scoring, buy-backs, and tie-breaks.</p>
+  </section>
+
+  <section>
+    <h2>Common questions</h2>
+    <p><strong>I missed a pick — what happens?</strong> If a matchday locks and you never submitted a pick, you're eliminated, the same as if your pick had lost.</p>
+    <p><strong>Can I get back in after being eliminated?</strong> Only if your league admin enables a buy-back and grants it to you. This allows one reinstatement per season.</p>
+    <p><strong>How do I delete my account?</strong> Go to <strong>Profile → Delete Account</strong> inside the app. See our <a href="privacy-policy.html">Privacy Policy</a> for details on what happens to your data.</p>
+    <p><strong>I'm not receiving pick reminders.</strong> Check that notifications are enabled for Survivor Football in your device Settings.</p>
+  </section>
+
+  <div class="contact-card">
+    <h2>Contact us</h2>
+    <p>Still stuck, or found a bug? Email <a href="mailto:jorge.165.morales@gmail.com">jorge.165.morales@gmail.com</a> and we'll get back to you.</p>
+  </div>
+
+</div>
+</body>
+</html>
