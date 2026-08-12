@@ -3,76 +3,244 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survivor — Privacy Policy</title>
+<title>Survivor Football — Privacy Policy</title>
+<meta name="description" content="Privacy policy for Survivor Football, a Champions League elimination-pool app.">
 <style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 40px 20px 80px;
-    line-height: 1.6;
-    color: #1a1a2e;
+  :root {
+    --bg: #F5F6FF;
+    --surface: #FFFFFF;
+    --text: #0B0E2E;
+    --text-secondary: #5A5F86;
+    --accent: #0232FF;
+    --accent-2: #00EEFF;
+    --border: #E1E4FA;
   }
-  h1 { font-size: 28px; margin-bottom: 4px; }
-  .updated { color: #666; font-size: 14px; margin-bottom: 32px; }
-  h2 { font-size: 20px; margin-top: 36px; }
-  ul { padding-left: 20px; }
-  a { color: #0232FF; }
   @media (prefers-color-scheme: dark) {
-    body { background: #0b0e1f; color: #e7e9ff; }
-    .updated { color: #9099c4; }
-    a { color: #6b8cff; }
+    :root {
+      --bg: #05081F;
+      --surface: #10153E;
+      --text: #F5F6FC;
+      --text-secondary: #9099C4;
+      --accent: #4E6BFF;
+      --accent-2: #00EEFF;
+      --border: #232B66;
+    }
   }
+  :root[data-theme="dark"] {
+    --bg: #05081F;
+    --surface: #10153E;
+    --text: #F5F6FC;
+    --text-secondary: #9099C4;
+    --accent: #4E6BFF;
+    --accent-2: #00EEFF;
+    --border: #232B66;
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F6FF;
+    --surface: #FFFFFF;
+    --text: #0B0E2E;
+    --text-secondary: #5A5F86;
+    --accent: #0232FF;
+    --accent-2: #00EEFF;
+    --border: #E1E4FA;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "Avenir Next", "Century Gothic", "Segoe UI", ui-sans-serif, system-ui, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0 20px;
+  }
+
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 56px 0 96px;
+  }
+
+  .rule {
+    height: 3px;
+    width: 64px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    margin-bottom: 24px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 36px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+
+  .updated {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0 0 40px;
+  }
+
+  .intro {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--text);
+    margin: 0 0 8px;
+    max-width: 62ch;
+  }
+
+  section {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+  }
+
+  p {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--text);
+    max-width: 62ch;
+    margin: 0 0 14px;
+  }
+
+  p:last-child { margin-bottom: 0; }
+
+  ul {
+    margin: 0 0 14px;
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 62ch;
+  }
+
+  li {
+    font-size: 15.5px;
+    line-height: 1.6;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-2);
+  }
+
+  strong { font-weight: 700; }
+
+  a {
+    color: var(--accent);
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
+  }
+  a:hover { text-decoration-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .contact-card {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .contact-card h2 { margin-bottom: 8px; }
+  .contact-card p { margin-bottom: 0; }
 </style>
 </head>
 <body>
+<div class="page">
 
-<h1>Survivor — Privacy Policy</h1>
-<p class="updated">Last updated: August 6, 2026</p>
+  <div class="rule"></div>
+  <p class="eyebrow">Survivor Football</p>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: August 11, 2026</p>
 
-<p>Survivor ("the app") is a Champions League elimination-pool app. This policy explains what information we collect, how we use it, and the choices you have.</p>
+  <p class="intro">Survivor Football is a Champions League elimination-pool app. This policy explains what information we collect, how we use it, and the choices you have.</p>
 
-<h2>Information We Collect</h2>
-<p>When you create an account, we collect:</p>
-<ul>
-  <li><strong>Email address</strong> — used to sign in and for account-related emails (e.g. password reset).</li>
-  <li><strong>Username and display name</strong> — used to identify you to other members of your leagues.</li>
-  <li><strong>Password</strong> — stored only as a securely hashed value; we never store or have access to your actual password. If you sign in with Apple or Google instead, we receive a unique identifier and email from that provider, not a password.</li>
-  <li><strong>Profile picture (optional)</strong> — if provided via Apple or Google sign-in.</li>
-</ul>
-<p>As you use the app, we also collect:</p>
-<ul>
-  <li><strong>Gameplay data</strong> — the leagues you create or join, the picks you make, and your results — visible to other members of leagues you're in.</li>
-  <li><strong>Push notification token</strong> — used only to send you pick reminders, if enabled. You can disable notifications in your device settings at any time.</li>
-</ul>
-<p>We do not use analytics, advertising, or tracking SDKs of any kind, and we do not collect data for advertising purposes.</p>
+  <section>
+    <h2>Information we collect</h2>
+    <p>When you create an account, we collect:</p>
+    <ul>
+      <li><strong>Email address</strong> — used to sign in and for account-related emails, like password resets.</li>
+      <li><strong>Username and display name</strong> — used to identify you to other members of your leagues.</li>
+      <li><strong>Password</strong> — stored only as a securely hashed value; we never store or have access to your actual password. If you sign in with Apple or Google instead, we receive a unique identifier and email from that provider, not a password.</li>
+      <li><strong>Profile picture (optional)</strong> — if provided via Apple or Google sign-in.</li>
+    </ul>
+    <p>As you use the app, we also collect:</p>
+    <ul>
+      <li><strong>Gameplay data</strong> — the leagues you create or join, the picks you make, and your results, visible to other members of leagues you're in.</li>
+      <li><strong>Push notification token</strong> — used only to send you pick reminders, if enabled. You can disable notifications in your device settings at any time.</li>
+    </ul>
+    <p>We do not use analytics, advertising, or tracking SDKs of any kind, and we do not collect data for advertising purposes.</p>
+  </section>
 
-<h2>How We Use Your Information</h2>
-<p>We use your information solely to operate the app: authenticating you, running league gameplay, showing standings to league members, sending pick-reminder notifications, and emailing you about your account (e.g. password resets).</p>
+  <section>
+    <h2>How we use your information</h2>
+    <p>We use your information solely to operate the app: authenticating you, running league gameplay, showing standings to league members, sending pick-reminder notifications, and emailing you about your account.</p>
+  </section>
 
-<h2>How We Share Your Information</h2>
-<p>We do not sell your personal information. We share data only with the service providers that operate the app on our behalf:</p>
-<ul>
-  <li><strong>Render</strong> — hosts our backend server and database.</li>
-  <li><strong>Resend</strong> — delivers transactional emails (e.g. password reset links).</li>
-  <li><strong>Apple / Google</strong> — if you choose to sign in with Apple or Google.</li>
-</ul>
-<p>Your display name, username, and gameplay results are visible to other members of any league you join — that's core to how the app works.</p>
+  <section>
+    <h2>How we share your information</h2>
+    <p>We do not sell your personal information. We share data only with the service providers that operate the app on our behalf:</p>
+    <ul>
+      <li><strong>Render</strong> — hosts our backend server and database.</li>
+      <li><strong>Resend</strong> — delivers transactional emails, like password reset links.</li>
+      <li><strong>Apple / Google</strong> — if you choose to sign in with Apple or Google.</li>
+    </ul>
+    <p>Your display name, username, and gameplay results are visible to other members of any league you join — that's core to how the app works.</p>
+  </section>
 
-<h2>Data Retention and Account Deletion</h2>
-<p>You can delete your account at any time from <strong>Profile → Delete Account</strong> inside the app. This permanently removes your personal information (email, name, username, and password). Your past picks and league history remain visible to other league members for the integrity of standings, but are no longer linked to your identity once deleted.</p>
+  <section>
+    <h2>Data retention and account deletion</h2>
+    <p>You can delete your account at any time from <strong>Profile → Delete Account</strong> inside the app. This permanently removes your personal information (email, name, username, and password). Your past picks and league history remain visible to other league members for the integrity of standings, but are no longer linked to your identity once deleted.</p>
+  </section>
 
-<h2>Children's Privacy</h2>
-<p>Survivor is not directed at children under 13, and we do not knowingly collect information from children under 13.</p>
+  <section>
+    <h2>Children's privacy</h2>
+    <p>Survivor Football is not directed at children under 13, and we do not knowingly collect information from children under 13.</p>
+  </section>
 
-<h2>Security</h2>
-<p>Passwords are hashed using industry-standard methods (bcrypt) before storage. We take reasonable measures to protect your information, but no method of transmission or storage is 100% secure.</p>
+  <section>
+    <h2>Security</h2>
+    <p>Passwords are hashed using industry-standard methods (bcrypt) before storage. We take reasonable measures to protect your information, but no method of transmission or storage is 100% secure.</p>
+  </section>
 
-<h2>Changes to This Policy</h2>
-<p>We may update this policy from time to time. Material changes will be reflected by updating the "Last updated" date above.</p>
+  <section>
+    <h2>Changes to this policy</h2>
+    <p>We may update this policy from time to time. Material changes will be reflected by updating the "Last updated" date above.</p>
+  </section>
 
-<h2>Contact Us</h2>
-<p>Questions about this policy or your data? Email <a href="mailto:jorge.165.morales@gmail.com">jorge.165.morales@gmail.com</a>.</p>
+  <div class="contact-card">
+    <h2>Contact us</h2>
+    <p>Questions about this policy or your data? Email <a href="mailto:jorge.165.morales@gmail.com">jorge.165.morales@gmail.com</a>.</p>
+  </div>
 
+</div>
 </body>
 </html>
