@@ -128,7 +128,7 @@ function addHours(date: Date, hours: number): Date {
   return result;
 }
 
-async function seedUpcomingSeason(): Promise<void> {
+export async function seedUpcomingSeason(prisma: PrismaClient): Promise<void> {
   const existing = await prisma.season.findFirst({ where: { isActive: true } });
   if (existing) {
     console.log(`Active season "${existing.name}" already exists (${existing.id}) — skipping seed.`);
@@ -170,7 +170,7 @@ async function seedUpcomingSeason(): Promise<void> {
  * Independent of seedUpcomingSeason()'s "any active season" guard, since
  * isActive is always false here; keyed off its own year instead.
  */
-async function seedHistoricalTestSeason(): Promise<void> {
+export async function seedHistoricalTestSeason(prisma: PrismaClient): Promise<void> {
   const YEAR = 2025;
   const existing = await prisma.season.findFirst({ where: { year: YEAR } });
   if (existing) {
@@ -319,15 +319,20 @@ function buildHistoricalMatchdayCalendar(): MatchdaySeed[] {
 }
 
 async function main() {
-  await seedUpcomingSeason();
-  await seedHistoricalTestSeason();
+  await seedUpcomingSeason(prisma);
+  await seedHistoricalTestSeason(prisma);
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Guarded so importing seedUpcomingSeason/seedHistoricalTestSeason
+// elsewhere (e.g. an admin endpoint reusing them against the app's own
+// PrismaService) doesn't also trigger this standalone-script run.
+if (require.main === module) {
+  main()
+    .catch((err) => {
+      console.error(err);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
