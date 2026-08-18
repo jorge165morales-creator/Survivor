@@ -8,12 +8,15 @@ export class AppController {
   @Get("health")
   async health() {
     let dbHost = "unknown";
+    let dbName = "unknown";
     try {
-      dbHost = new URL(process.env.DATABASE_URL ?? "").hostname;
+      const url = new URL(process.env.DATABASE_URL ?? "");
+      dbHost = url.hostname;
+      dbName = url.pathname;
     } catch {
       // leave as "unknown"
     }
     const seasonCount = await this.prisma.season.count();
-    return { status: "ok", dbHost, seasonCount };
+    return { status: "ok", dbHost, dbName, seasonCount };
   }
 }
