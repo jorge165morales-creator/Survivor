@@ -74,6 +74,8 @@ async function refreshAccessToken(): Promise<string | null> {
   return inFlightRefresh;
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 async function request<TResponse>(
   method: string,
   path: string,
@@ -81,14 +83,28 @@ async function request<TResponse>(
   accessToken: string | undefined,
   isRetry = false,
 ): Promise<TResponse> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: {
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError(0, "The request timed out. Check your connection and try again.");
+    }
+    throw new ApiError(0, "Couldn't reach the server. Check your connection and try again.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (res.status === 401 && accessToken && !isRetry) {
     const newAccessToken = await refreshAccessToken();
