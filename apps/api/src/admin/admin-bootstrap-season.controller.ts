@@ -28,4 +28,55 @@ export class AdminBootstrapSeasonController {
     });
     return { seasons };
   }
+
+  // Adds one fresh, not-yet-locked matchday+fixture to the historical test
+  // season (reusing two of its existing teams), so the App Store review
+  // demo league always has something pickable regardless of how stale its
+  // original synthetic matchday schedule has gone. Safe to call repeatedly
+  // — each call just adds another 48h-out matchday.
+  @Post("add-review-matchday")
+  async addReviewMatchday(@Headers("x-bootstrap-secret") secret: string | undefined) {
+    if (!secret || secret !== process.env.JWT_SECRET) {
+      throw new ForbiddenException("Invalid bootstrap secret");
+    }
+    const historicalSeason = await this.prisma.season.findFirst({
+      where: { isPractice: false, isActive: false },
+      orderBy: { year: "desc" },
+    });
+    if (!historicalSeason) {
+      throw new ForbiddenException("No historical test season found");
+    }
+    const teams = await this.prisma.team.findMany({
+      where: { seasons: { some: { id: historicalSeason.id } } },
+      take: 2,
+    });
+    if (teams.length < 2) {
+      throw new ForbiddenException("Historical season doesn't have enough teams");
+    }
+    const [home, away] = teams;
+    const lockAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    const matchday = await this.prisma.matchday.create({
+      data: {
+        seasonId: historicalSeason.id,
+        sequence: 99,
+        type: "GROUP",
+        roundLabel: "App Review Test Matchday",
+        lockAt,
+      },
+    });
+    const fixture = await this.prisma.fixture.create({
+      data: {
+        matchdayId: matchday.id,
+        externalId: `app-review-${Date.now()}`,
+        homeTeamId: home.id,
+        awayTeamId: away.id,
+        kickoffAt: lockAt,
+        venue: "Neutral Venue",
+        status: "SCHEDULED",
+      },
+    });
+
+    return { matchday, fixture, home: home.name, away: away.name };
+  }
 }
