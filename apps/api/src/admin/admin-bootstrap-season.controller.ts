@@ -32,8 +32,10 @@ export class AdminBootstrapSeasonController {
   // Adds one fresh, not-yet-locked matchday+fixture to the historical test
   // season (reusing two of its existing teams), so the App Store review
   // demo league always has something pickable regardless of how stale its
-  // original synthetic matchday schedule has gone. Safe to call repeatedly
-  // — each call just adds another 48h-out matchday.
+  // original synthetic matchday schedule has gone. Safe to call repeatedly —
+  // each call replaces the previous app-review matchday (sequence 99) rather
+  // than colliding with it, so it always ends up with exactly one, freshly
+  // timed 48h out.
   @Post("add-review-matchday")
   async addReviewMatchday(@Headers("x-bootstrap-secret") secret: string | undefined) {
     if (!secret || secret !== process.env.JWT_SECRET) {
@@ -55,6 +57,14 @@ export class AdminBootstrapSeasonController {
     }
     const [home, away] = teams;
     const lockAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    const existing = await this.prisma.matchday.findUnique({
+      where: { seasonId_sequence: { seasonId: historicalSeason.id, sequence: 99 } },
+    });
+    if (existing) {
+      await this.prisma.fixture.deleteMany({ where: { matchdayId: existing.id } });
+      await this.prisma.matchday.delete({ where: { id: existing.id } });
+    }
 
     const matchday = await this.prisma.matchday.create({
       data: {
