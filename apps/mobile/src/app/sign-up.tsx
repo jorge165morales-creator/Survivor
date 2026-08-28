@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, router } from 'expo-router';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientButton } from '@/components/gradient-button';
+import { LanguageToggle } from '@/components/language-toggle';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
@@ -48,6 +49,10 @@ export default function SignUpScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <View style={styles.languageRow}>
+          <LanguageToggle />
+        </View>
+
         <ThemedText type="title" style={styles.title}>
           Survivor
         </ThemedText>
@@ -120,6 +125,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: MaxContentWidth,
+  },
+  languageRow: {
+    position: 'absolute',
+    top: Spacing.three,
+    right: Spacing.four,
+    zIndex: 1,
   },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three },
