@@ -26,6 +26,12 @@ const STATUS_MAP: Record<string, ProviderFixture["status"]> = {
 };
 
 interface ApiFootballFixtureResponse {
+  // Present as `{}` or `[]` when there's nothing wrong; API-Football still
+  // returns HTTP 200 with an empty `response` for plan/parameter errors
+  // (e.g. a season outside the current plan's coverage), so this is the only
+  // signal that a "0 results" reply means something failed rather than
+  // legitimately having no fixtures yet.
+  errors?: Record<string, string> | unknown[];
   response: Array<{
     fixture: {
       id: number;
@@ -75,7 +81,11 @@ export class ApiFootballProvider implements SportsDataProvider {
     if (!res.ok) {
       throw new Error(`API-Football request failed: ${res.status} ${res.statusText}`);
     }
-    return res.json() as Promise<ApiFootballFixtureResponse>;
+    const data = (await res.json()) as ApiFootballFixtureResponse;
+    if (data.errors && !Array.isArray(data.errors) && Object.keys(data.errors).length > 0) {
+      throw new Error(`API-Football request failed: ${Object.values(data.errors).join(", ")}`);
+    }
+    return data;
   }
 }
 

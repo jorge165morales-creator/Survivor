@@ -191,8 +191,12 @@ describe("SeasonSyncService.syncActiveSeasons", () => {
 
     const summaries = await service.syncActiveSeasons();
 
-    // First season's provider call rejected — logged and skipped, not thrown.
-    expect(summaries).toEqual([{ seasonId: "active-2", matchdaysUpdated: 0, fixturesSynced: 0 }]);
+    // First season's provider call rejected — logged and reported with an
+    // error, not thrown; second season still syncs normally.
+    expect(summaries).toEqual([
+      { seasonId: "active-1", matchdaysUpdated: 0, fixturesSynced: 0, error: "API-Football request failed: 500" },
+      { seasonId: "active-2", matchdaysUpdated: 0, fixturesSynced: 0 },
+    ]);
     expect(prisma.season.findMany).toHaveBeenCalledWith({ where: { isActive: true } });
   });
 });

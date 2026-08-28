@@ -76,4 +76,28 @@ describe("ApiFootballProvider", () => {
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("throws when the API responds 200 OK but with a plan/parameter error", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          errors: { plan: "Free plans do not have access to this season, try from 2022 to 2024." },
+          response: [],
+        }),
+    } as Response);
+
+    await expect(provider.getFixtures("2", 2026)).rejects.toThrow(
+      "API-Football request failed: Free plans do not have access to this season, try from 2022 to 2024.",
+    );
+  });
+
+  it("does not throw when errors is an empty array (API-Football's normal 'no errors' shape)", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ errors: [], response: [] }),
+    } as Response);
+
+    await expect(provider.getFixtures("2", 2026)).resolves.toEqual([]);
+  });
 });

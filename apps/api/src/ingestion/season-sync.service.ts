@@ -14,6 +14,7 @@ export interface SeasonSyncSummary {
   seasonId: string;
   matchdaysUpdated: number;
   fixturesSynced: number;
+  error?: string;
 }
 
 /**
@@ -46,6 +47,12 @@ export class SeasonSyncService {
         summaries.push(await this.syncSeason(season.id, season.year));
       } catch (err) {
         this.logger.error(`Season sync failed for ${season.id}`, err instanceof Error ? err.stack : err);
+        summaries.push({
+          seasonId: season.id,
+          matchdaysUpdated: 0,
+          fixturesSynced: 0,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
     return summaries;
