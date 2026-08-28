@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Headers, Post } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Headers, NotFoundException, Post } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { seedUpcomingSeason, seedHistoricalTestSeason } from "../../prisma/seed";
 
@@ -88,5 +88,27 @@ export class AdminBootstrapSeasonController {
     });
 
     return { matchday, fixture, home: home.name, away: away.name };
+  }
+
+  // Grants isAdmin to an existing account by email, since there's no
+  // self-service path yet and the normal admin endpoints (season-sync,
+  // fixture overrides) all require one. Safe to call repeatedly.
+  @Post("promote-admin")
+  async promoteAdmin(
+    @Headers("x-bootstrap-secret") secret: string | undefined,
+    @Body("email") email: string | undefined,
+  ) {
+    if (!secret || secret !== process.env.JWT_SECRET) {
+      throw new ForbiddenException("Invalid bootstrap secret");
+    }
+    if (!email) {
+      throw new ForbiddenException("email is required");
+    }
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(`No user found with email ${email}`);
+    }
+    await this.prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+    return { id: user.id, email: user.email, isAdmin: true };
   }
 }
