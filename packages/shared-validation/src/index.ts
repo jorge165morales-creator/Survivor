@@ -110,6 +110,20 @@ export const submitPickSchema = z.object({
 });
 export type SubmitPickInput = z.infer<typeof submitPickSchema>;
 
+export const createTeamSchema = z.object({
+  name: z.string().min(1).max(100),
+  seasonId: z.string().uuid(),
+  shortName: z.string().min(1).max(20).optional(),
+  crestUrl: z.string().url().optional(),
+  // Real provider id, so a later automated sync recognizes this team instead
+  // of creating a duplicate for it. Safe to omit — team-resolution.ts's
+  // resolveTeam() falls back to matching by exact name within the season, so
+  // using the same name a real provider will eventually send still avoids a
+  // duplicate even without a pre-known externalId.
+  externalId: z.string().min(1).optional(),
+});
+export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+
 export const createFixtureSchema = z
   .object({
     matchdayId: z.string().uuid(),

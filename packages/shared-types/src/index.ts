@@ -137,6 +137,14 @@ export interface PickHistoryResponse {
 }
 
 /** Response shape for POST /admin/fixtures and POST /admin/fixtures/:id/override */
+export interface AdminTeamDetail {
+  id: string;
+  name: string;
+  shortName: string;
+  crestUrl: string | null;
+  externalId: string;
+}
+
 export interface AdminFixtureDetail {
   id: string;
   matchdayId: string;

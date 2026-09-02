@@ -5,6 +5,8 @@ import { AdminFixturesController } from "./admin-fixtures.controller";
 import { AdminFixturesService } from "./admin-fixtures.service";
 import { AdminSeasonSyncController } from "./admin-season-sync.controller";
 import { AdminPracticeLeagueController } from "./admin-practice-league.controller";
+import { AdminTeamsController } from "./admin-teams.controller";
+import { AdminTeamsService } from "./admin-teams.service";
 
 @Module({
   imports: [GameEngineModule, IngestionModule],
@@ -12,7 +14,8 @@ import { AdminPracticeLeagueController } from "./admin-practice-league.controlle
     AdminFixturesController,
     AdminSeasonSyncController,
     AdminPracticeLeagueController,
+    AdminTeamsController,
   ],
-  providers: [AdminFixturesService],
+  providers: [AdminFixturesService, AdminTeamsService],
 })
 export class AdminModule {}
