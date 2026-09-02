@@ -50,8 +50,9 @@ export default function JoinLeagueScreen() {
           onChangeText={setInviteCode}
           placeholder={t.joinLeague.inviteCodePlaceholder}
           placeholderTextColor={theme.textSecondary}
-          autoCapitalize="none"
+          autoCapitalize="characters"
           autoCorrect={false}
+          maxLength={6}
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
         />
 

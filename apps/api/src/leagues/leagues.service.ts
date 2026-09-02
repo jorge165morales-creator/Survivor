@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { MembershipStatus } from "@prisma/client";
+import { MembershipStatus, Prisma } from "@prisma/client";
 import type {
   InviteLinkResponse,
   LeagueDetail,
@@ -13,6 +13,7 @@ import type {
 } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { RecomputeService } from "../game-engine/recompute.service";
+import { generateInviteCode } from "./invite-code";
 
 const ACTIVE_MEMBER_FILTER = { status: { not: MembershipStatus.LEFT } };
 
@@ -35,23 +36,38 @@ export class LeaguesService {
       throw new NotFoundException("Season not found");
     }
 
-    const league = await this.prisma.league.create({
-      data: {
-        name,
-        seasonId,
-        buyBackEnabled,
-        paymentRequired,
-        commissionerId: userId,
-        // The commissioner is exempt from their own payment gate — a
-        // paymentRequired league only makes sense for the members they invite.
-        memberships: {
-          create: { userId, status: MembershipStatus.ACTIVE, hasPaid: true, paidAt: new Date() },
-        },
-      },
-      include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
-    });
+    // Retries with a fresh code on the (very unlikely, ~1-in-a-billion)
+    // chance generateInviteCode() collides with an existing league's code —
+    // see invite-code.ts for why this isn't collision-proof by construction
+    // the way the old cuid()-based default was.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const league = await this.prisma.league.create({
+          data: {
+            name,
+            seasonId,
+            buyBackEnabled,
+            paymentRequired,
+            commissionerId: userId,
+            inviteCode: generateInviteCode(),
+            // The commissioner is exempt from their own payment gate — a
+            // paymentRequired league only makes sense for the members they invite.
+            memberships: {
+              create: { userId, status: MembershipStatus.ACTIVE, hasPaid: true, paidAt: new Date() },
+            },
+          },
+          include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
+        });
 
-    return this.toSummary(league, MembershipStatus.ACTIVE);
+        return this.toSummary(league, MembershipStatus.ACTIVE);
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error("Failed to generate a unique invite code");
   }
 
   async listMine(userId: string): Promise<LeagueSummary[]> {
@@ -116,8 +132,11 @@ export class LeaguesService {
   }
 
   async joinByInviteCode(userId: string, inviteCode: string): Promise<LeagueSummary> {
+    // Codes are generated uppercase (invite-code.ts) — normalizing here means
+    // it doesn't matter whether a user typed it in lowercase or their
+    // keyboard auto-capitalized differently than expected.
     const league = await this.prisma.league.findUnique({
-      where: { inviteCode },
+      where: { inviteCode: inviteCode.toUpperCase() },
       include: { memberships: true },
     });
     if (!league) {
