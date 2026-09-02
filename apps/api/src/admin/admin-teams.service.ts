@@ -11,6 +11,14 @@ function shortNameFor(name: string): string {
 export class AdminTeamsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async list(seasonId: string): Promise<AdminTeamDetail[]> {
+    const teams = await this.prisma.team.findMany({
+      where: { seasons: { some: { id: seasonId } } },
+      orderBy: { name: "asc" },
+    });
+    return teams;
+  }
+
   async create(
     name: string,
     seasonId: string,

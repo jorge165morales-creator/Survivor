@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
 import { createTeamSchema, type CreateTeamInput } from "@survivor/shared-validation";
 import { JwtAuthGuard } from "../common/jwt-auth.guard";
 import { AdminGuard } from "../common/admin.guard";
@@ -14,6 +14,15 @@ import { AdminTeamsService } from "./admin-teams.service";
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminTeamsController {
   constructor(private readonly adminTeams: AdminTeamsService) {}
+
+  // Lists a season's teams with their ids, so whoever's driving manual
+  // fixture entry (there's no admin UI for this yet, just direct API calls)
+  // can look up the homeTeamId/awayTeamId that admin/fixtures needs without
+  // going anywhere near the database directly.
+  @Get()
+  list(@Query("seasonId") seasonId: string) {
+    return this.adminTeams.list(seasonId);
+  }
 
   @Post()
   create(@Body(new ZodValidationPipe(createTeamSchema)) body: CreateTeamInput) {
