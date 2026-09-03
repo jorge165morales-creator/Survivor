@@ -31,8 +31,13 @@ export default function CreateLeagueScreen() {
     seasonsApi
       .all(session.accessToken)
       .then((all) => {
-        setSeasons(all);
-        setSeasonId(all.find((s) => s.isActive)?.id ?? all[0]?.id ?? null);
+        // Excludes the historical test-data season (prisma/seed.ts's
+        // seedHistoricalTestSeason) — that's internal-only, used for the
+        // friends-only practice league and exercising the game engine
+        // end-to-end, never a real option for a league a user creates here.
+        const real = all.filter((s) => s.isActive);
+        setSeasons(real);
+        setSeasonId(real[0]?.id ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : t.createLeague.couldNotLoadSeasons));
   }, [session, t]);
