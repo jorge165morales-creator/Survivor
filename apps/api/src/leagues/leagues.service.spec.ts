@@ -245,6 +245,35 @@ describe("LeaguesService", () => {
     });
   });
 
+  describe("archive", () => {
+    const league = { id: "league-1", commissionerId: "commish", archivedAt: null };
+
+    it("rejects an unknown league", async () => {
+      prisma.league.findUnique.mockResolvedValue(null);
+      await expect(service.archive("missing", "commish")).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects a non-commissioner", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      await expect(service.archive("league-1", "user-2")).rejects.toThrow(ForbiddenException);
+    });
+
+    it("sets archivedAt for the commissioner", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      await service.archive("league-1", "commish");
+      expect(prisma.league.update).toHaveBeenCalledWith({
+        where: { id: "league-1" },
+        data: { archivedAt: expect.any(Date) },
+      });
+    });
+
+    it("is a no-op when already archived", async () => {
+      prisma.league.findUnique.mockResolvedValue({ ...league, archivedAt: new Date() });
+      await service.archive("league-1", "commish");
+      expect(prisma.league.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe("grantBuyBack", () => {
     const league = { id: "league-1", commissionerId: "commish", buyBackEnabled: true };
 

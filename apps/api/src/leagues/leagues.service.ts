@@ -72,7 +72,7 @@ export class LeaguesService {
 
   async listMine(userId: string): Promise<LeagueSummary[]> {
     const memberships = await this.prisma.leagueMembership.findMany({
-      where: { userId, ...ACTIVE_MEMBER_FILTER },
+      where: { userId, ...ACTIVE_MEMBER_FILTER, league: { archivedAt: null } },
       include: {
         league: {
           include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
@@ -82,6 +82,26 @@ export class LeaguesService {
     });
 
     return memberships.map((m) => this.toSummary(m.league, m.status));
+  }
+
+  // Soft-delete via the archivedAt column that was already on the League
+  // model but never wired up — leave()'s error message for a commissioner
+  // ("transfer or delete it instead") promised this existed. A hard delete
+  // isn't set up with cascade rules, so this is the safe option: it hides
+  // the league from listMine() and blocks new joins without touching any
+  // other member's picks/membership rows, and it's reversible if needed.
+  async archive(leagueId: string, userId: string): Promise<void> {
+    const league = await this.prisma.league.findUnique({ where: { id: leagueId } });
+    if (!league) {
+      throw new NotFoundException("League not found");
+    }
+    if (league.commissionerId !== userId) {
+      throw new ForbiddenException("Only the commissioner can delete this league");
+    }
+    if (league.archivedAt) {
+      return;
+    }
+    await this.prisma.league.update({ where: { id: leagueId }, data: { archivedAt: new Date() } });
   }
 
   async getById(leagueId: string, userId: string): Promise<LeagueDetail> {
@@ -139,7 +159,7 @@ export class LeaguesService {
       where: { inviteCode: inviteCode.toUpperCase() },
       include: { memberships: true },
     });
-    if (!league) {
+    if (!league || league.archivedAt) {
       throw new NotFoundException("Invalid invite code");
     }
 

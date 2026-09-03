@@ -61,6 +61,12 @@ export class LeaguesController {
     return this.leagues.leave(id, userId);
   }
 
+  @Delete(":id")
+  @HttpCode(204)
+  archive(@CurrentUserId() userId: string, @Param("id") id: string) {
+    return this.leagues.archive(id, userId);
+  }
+
   @Post(":id/members/:userId/grant-buy-back")
   @HttpCode(200)
   grantBuyBack(
