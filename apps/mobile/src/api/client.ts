@@ -76,6 +76,16 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 const REQUEST_TIMEOUT_MS = 15_000;
+// Our Render instance is on the free tier and spins down after ~15 minutes
+// idle; waking it back up can take longer than REQUEST_TIMEOUT_MS. A single
+// automatic retry with more headroom smooths that over instead of surfacing
+// a timeout error on what's often just a cold start.
+const TIMEOUT_RETRY_DELAY_MS = 1_500;
+const TIMEOUT_RETRY_TIMEOUT_MS = 25_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function request<TResponse>(
   method: string,
@@ -83,9 +93,16 @@ async function request<TResponse>(
   body: unknown | undefined,
   accessToken: string | undefined,
   isRetry = false,
+  isTimeoutRetry = false,
+  // Writes default to not-retryable: a timeout means we never heard back,
+  // and for most writes (submitting a pick, logging in) we can't tell
+  // whether it already landed on the server. Pass true only for a write
+  // that's confirmed idempotent — e.g. setting a flag to an exact value.
+  retryable = false,
 ): Promise<TResponse> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutMs = isTimeoutRetry ? TIMEOUT_RETRY_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -100,6 +117,10 @@ async function request<TResponse>(
     });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
+      if ((method === "GET" || retryable) && !isTimeoutRetry) {
+        await delay(TIMEOUT_RETRY_DELAY_MS);
+        return request<TResponse>(method, path, body, accessToken, isRetry, true, retryable);
+      }
       throw new ApiError(0, "The request timed out. Check your connection and try again.");
     }
     throw new ApiError(0, "Couldn't reach the server. Check your connection and try again.");
@@ -124,8 +145,13 @@ async function request<TResponse>(
   return res.json();
 }
 
-async function post<TResponse>(path: string, body: unknown, accessToken?: string): Promise<TResponse> {
-  return request<TResponse>("POST", path, body, accessToken);
+async function post<TResponse>(
+  path: string,
+  body: unknown,
+  accessToken?: string,
+  retryable = false,
+): Promise<TResponse> {
+  return request<TResponse>("POST", path, body, accessToken, false, false, retryable);
 }
 
 async function get<TResponse>(path: string, accessToken: string): Promise<TResponse> {
@@ -184,8 +210,11 @@ export const leaguesApi = {
   leave: (id: string, accessToken: string) => del(`/leagues/${id}/members/me`, accessToken),
   grantBuyBack: (id: string, userId: string, accessToken: string) =>
     post<LeagueSummary>(`/leagues/${id}/members/${userId}/grant-buy-back`, {}, accessToken),
+  // Retryable: markMemberPaid just sets hasPaid to an exact boolean and only
+  // stamps paidAt on the first false-to-true transition, so a retry after a
+  // timeout (e.g. a cold-started server) can't double-apply anything.
   markPaid: (id: string, userId: string, hasPaid: boolean, accessToken: string) =>
-    post<LeagueSummary>(`/leagues/${id}/members/${userId}/mark-paid`, { hasPaid }, accessToken),
+    post<LeagueSummary>(`/leagues/${id}/members/${userId}/mark-paid`, { hasPaid }, accessToken, true),
 };
 
 export const seasonsApi = {

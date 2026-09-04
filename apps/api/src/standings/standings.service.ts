@@ -84,8 +84,22 @@ export class StandingsService {
     ]);
     const memberships = allMemberships.filter((m) => !league.paymentRequired || m.hasPaid);
 
+    // A matchday locks all at once at its earliest fixture's kickoff (see
+    // picks.service.ts) specifically so no one can use info from earlier in
+    // the round to inform a later pick. Showing someone else's pick before
+    // their own matchday has locked would defeat that the same way an early
+    // result would, so every member's row only reveals a pick once its
+    // matchday has locked — except the requesting user's own row, which
+    // always shows their own picks back to them.
+    const now = new Date();
+    const lockAtByMatchday = new Map(matchdays.map((m) => [m.id, m.lockAt]));
+
     const picksByUser = new Map<string, Map<string, (typeof picks)[number]>>();
     for (const pick of picks) {
+      if (pick.userId !== userId) {
+        const lockAt = lockAtByMatchday.get(pick.matchdayId);
+        if (!lockAt || now < lockAt) continue;
+      }
       const forUser = picksByUser.get(pick.userId) ?? new Map();
       forUser.set(pick.matchdayId, pick);
       picksByUser.set(pick.userId, forUser);

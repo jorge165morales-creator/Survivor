@@ -40,8 +40,8 @@ describe("StandingsService.getStandingsGrid", () => {
     prisma.leagueMembership.findUnique.mockResolvedValue({ status: "ACTIVE" });
     prisma.league.findUniqueOrThrow.mockResolvedValue({ id: "league-1", seasonId: "season-1" });
     prisma.matchday.findMany.mockResolvedValue([
-      { id: "md-1", sequence: 1, type: "GROUP", roundLabel: "League Phase Matchday 1" },
-      { id: "md-2", sequence: 2, type: "GROUP", roundLabel: "League Phase Matchday 2" },
+      { id: "md-1", sequence: 1, type: "GROUP", roundLabel: "League Phase Matchday 1", lockAt: new Date("2026-01-01T18:00:00Z") },
+      { id: "md-2", sequence: 2, type: "GROUP", roundLabel: "League Phase Matchday 2", lockAt: new Date("2026-01-08T18:00:00Z") },
     ]);
     prisma.leagueMembership.findMany.mockResolvedValue([
       {
@@ -98,6 +98,42 @@ describe("StandingsService.getStandingsGrid", () => {
     // No pick was ever made for md-2 — the key is simply absent, not null.
     expect(result.rows[0].picks["md-2"]).toBeUndefined();
     expect(result.rows[1].picks).toEqual({ "md-1": { team: TEAM_B, outcome: "LOSS", fixture: expectedFixture } });
+  });
+
+  it("hides another member's pick for a matchday that hasn't locked yet, but always shows the caller's own", async () => {
+    prisma.leagueMembership.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    prisma.league.findUniqueOrThrow.mockResolvedValue({ id: "league-1", seasonId: "season-1" });
+    const farFuture = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    prisma.matchday.findMany.mockResolvedValue([
+      { id: "md-1", sequence: 1, type: "GROUP", roundLabel: "League Phase Matchday 1", lockAt: farFuture },
+    ]);
+    prisma.leagueMembership.findMany.mockResolvedValue([
+      { userId: "user-1", user: { displayName: "Alice" }, status: "ACTIVE", eliminatedAtMatchday: null, buyBackAvailable: false, buyBackUsed: false },
+      { userId: "user-2", user: { displayName: "Bob" }, status: "ACTIVE", eliminatedAtMatchday: null, buyBackAvailable: false, buyBackUsed: false },
+    ]);
+    const FIXTURE_1 = {
+      id: "fixture-1",
+      homeTeam: TEAM_A,
+      awayTeam: TEAM_B,
+      kickoffAt: farFuture,
+      status: "SCHEDULED",
+      homeScore: null,
+      awayScore: null,
+      result: null,
+    };
+    prisma.pick.findMany.mockResolvedValue([
+      { userId: "user-1", matchdayId: "md-1", team: TEAM_A, outcome: "PENDING", fixture: FIXTURE_1 },
+      { userId: "user-2", matchdayId: "md-1", team: TEAM_B, outcome: "PENDING", fixture: FIXTURE_1 },
+    ]);
+
+    const result = await service.getStandingsGrid("league-1", "user-1");
+
+    const aliceRow = result.rows.find((r) => r.userId === "user-1");
+    const bobRow = result.rows.find((r) => r.userId === "user-2");
+    // The caller (user-1) always sees their own pick back.
+    expect(aliceRow?.picks["md-1"]?.team.id).toBe(TEAM_A.id);
+    // But another member's pick for a still-unlocked matchday is withheld.
+    expect(bobRow?.picks["md-1"]).toBeUndefined();
   });
 
   it("ranks eliminated members by latest elimination first, alive members always on top", async () => {
