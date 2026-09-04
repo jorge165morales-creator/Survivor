@@ -124,7 +124,11 @@ export const en = {
     rules: 'Rules',
     eliminatedBanner: "You've been eliminated from this league.",
     shareInvite: 'Share Invite',
-    shareMessage: (inviteCode: string, url: string) => `Join my Survivor league! Invite code: ${inviteCode}\n${url}`,
+    // Deliberately code-only, no survivor:// deep link — custom URL schemes
+    // aren't auto-linkified (tappable) by iMessage/WhatsApp/SMS, so a raw
+    // survivor:// link just showed up as dead text. The short invite code
+    // (see invite-code.ts) is easy enough to type manually on its own.
+    shareMessage: (inviteCode: string) => `Join my Survivor league! Invite code: ${inviteCode}`,
     couldNotCreateInviteLink: 'Could not create invite link',
     membersHeading: (count: number, max: number) => `Members (${count}/${max})`,
     adminTag: ' (Admin)',
@@ -338,8 +342,7 @@ export const es: typeof en = {
     rules: 'Reglas',
     eliminatedBanner: 'Has sido eliminado de esta liga.',
     shareInvite: 'Compartir invitación',
-    shareMessage: (inviteCode: string, url: string) =>
-      `¡Únete a mi liga de Survivor! Código de invitación: ${inviteCode}\n${url}`,
+    shareMessage: (inviteCode: string) => `¡Únete a mi liga de Survivor! Código de invitación: ${inviteCode}`,
     couldNotCreateInviteLink: 'No se pudo crear el enlace de invitación',
     membersHeading: (count: number, max: number) => `Miembros (${count}/${max})`,
     adminTag: ' (Admin)',

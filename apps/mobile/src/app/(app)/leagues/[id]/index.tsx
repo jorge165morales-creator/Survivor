@@ -42,8 +42,8 @@ export default function LeagueDetailScreen() {
   async function handleShare() {
     if (!session || !id) return;
     try {
-      const { url, inviteCode } = await leaguesApi.inviteLink(id, session.accessToken);
-      await Share.share({ message: t.leagueDetail.shareMessage(inviteCode, url) });
+      const { inviteCode } = await leaguesApi.inviteLink(id, session.accessToken);
+      await Share.share({ message: t.leagueDetail.shareMessage(inviteCode) });
     } catch (err) {
       notify(t.leagueDetail.couldNotCreateInviteLink, err instanceof ApiError ? err.message : undefined);
     }
