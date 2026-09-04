@@ -161,7 +161,7 @@ export const en = {
     alreadyUsed: 'Already used',
     couldNotSubmit: 'Could not submit your pick',
     reminderTitle: (leagueName: string) => `${leagueName}: pick reminder`,
-    reminderBody: (roundLabel: string) => `${roundLabel} locks in 3 hours — make your pick!`,
+    reminderBody: (roundLabel: string) => `⏰ Run! ${roundLabel} locks in 1 hour — make your pick before it's too late!`,
   },
   standings: {
     title: 'Standings',
@@ -375,7 +375,8 @@ export const es: typeof en = {
     alreadyUsed: 'Ya usado',
     couldNotSubmit: 'No se pudo enviar tu selección',
     reminderTitle: (leagueName: string) => `${leagueName}: recordatorio de selección`,
-    reminderBody: (roundLabel: string) => `${roundLabel} se bloquea en 3 horas — ¡haz tu selección!`,
+    reminderBody: (roundLabel: string) =>
+      `⏰ ¡Corre! ${roundLabel} se bloquea en 1 hora — ¡haz tu selección antes de que sea tarde!`,
   },
   standings: {
     title: 'Clasificación',

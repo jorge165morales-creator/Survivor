@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-const REMINDER_LEAD_MS = 3 * 60 * 60 * 1000;
+const REMINDER_LEAD_MS = 60 * 60 * 1000;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
