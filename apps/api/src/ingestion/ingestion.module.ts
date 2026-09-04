@@ -7,6 +7,7 @@ import { PracticeSeasonService } from "./practice-season.service";
 import { PracticeReplayScheduler } from "./practice-replay-scheduler.service";
 import { ApiFootballProvider } from "./providers/api-football.provider";
 import { FootballDataOrgProvider } from "./providers/football-data-org.provider";
+import { HighlightlyProvider } from "./providers/highlightly.provider";
 import { SPORTS_DATA_PROVIDER } from "./providers/sports-data.provider.interface";
 
 @Module({
@@ -18,7 +19,13 @@ import { SPORTS_DATA_PROVIDER } from "./providers/sports-data.provider.interface
     PracticeSeasonService,
     PracticeReplayScheduler,
     FootballDataOrgProvider,
-    { provide: SPORTS_DATA_PROVIDER, useClass: ApiFootballProvider },
+    ApiFootballProvider,
+    // Confirmed live (2026-09-03) that Highlightly's free BASIC tier has no
+    // season restriction, unlike API-Football's — "All data available with
+    // current plan." See highlightly.provider.ts for the cost-model caveats
+    // this swap required (no ids/round filter, worked around via date
+    // filtering in getLiveResults).
+    { provide: SPORTS_DATA_PROVIDER, useClass: HighlightlyProvider },
   ],
   exports: [IngestionService, SeasonSyncService, PracticeSeasonService],
 })

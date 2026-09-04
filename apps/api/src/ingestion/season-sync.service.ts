@@ -6,8 +6,11 @@ import { resolveTeam } from "./team-resolution";
 import { SPORTS_DATA_PROVIDER, type ProviderFixture, type SportsDataProvider } from "./providers/sports-data.provider.interface";
 
 // This app is UEFA Champions League-only — no per-season/competition config
-// exists anywhere else in the schema, so hardcoding API-Football's league id
-// here matches that rather than adding a column nothing else would use.
+// exists anywhere else in the schema, so hardcoding a competition id here
+// matches that rather than adding a column nothing else would use. Only
+// meaningful to API-Football's provider (league id "2") — the currently
+// wired HighlightlyProvider ignores this param entirely and filters by
+// league name internally instead (see highlightly.provider.ts).
 const UEFA_CHAMPIONS_LEAGUE_ID = "2";
 
 export interface SeasonSyncSummary {
