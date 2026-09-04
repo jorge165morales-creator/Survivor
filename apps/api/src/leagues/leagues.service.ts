@@ -261,6 +261,57 @@ export class LeaguesService {
     return this.getSummaryFor(leagueId, userId);
   }
 
+  // Admin lookup — listMine() only shows leagues the caller belongs to, so
+  // this is the only way to find a league (e.g. by name, for a support
+  // request) that the admin account isn't a member of at all.
+  async adminList(search?: string) {
+    const leagues = await this.prisma.league.findMany({
+      where: search ? { name: { contains: search, mode: "insensitive" } } : undefined,
+      include: {
+        commissioner: { select: { displayName: true, username: true, email: true } },
+        _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return leagues.map((l) => ({
+      id: l.id,
+      name: l.name,
+      inviteCode: l.inviteCode,
+      maxMembers: l.maxMembers,
+      memberCount: l._count.memberships,
+      archivedAt: l.archivedAt,
+      commissioner: l.commissioner,
+    }));
+  }
+
+  // Admin override of update() — for support cases where isAdmin needs to
+  // adjust a league (e.g. raise its member cap) that they aren't the
+  // commissioner of, since once the app is in real users' hands most
+  // leagues aren't ones the admin account belongs to at all.
+  async adminUpdate(
+    leagueId: string,
+    data: { name?: string; maxMembers?: number; buyBackEnabled?: boolean; paymentRequired?: boolean },
+  ): Promise<LeagueSummary> {
+    const league = await this.prisma.league.findUnique({
+      where: { id: leagueId },
+      include: { memberships: true },
+    });
+    if (!league) {
+      throw new NotFoundException("League not found");
+    }
+    if (data.maxMembers !== undefined) {
+      const activeCount = league.memberships.filter((m) => m.status !== MembershipStatus.LEFT).length;
+      if (data.maxMembers < activeCount) {
+        throw new BadRequestException(
+          `maxMembers cannot be lower than the current member count (${activeCount})`,
+        );
+      }
+    }
+    await this.prisma.league.update({ where: { id: leagueId }, data });
+    return this.getSummaryFor(leagueId, league.commissionerId);
+  }
+
   /**
    * Commissioner-only: grants an eliminated member a one-time buy-back this
    * season. No payment happens in-app — any money changes hands between the
