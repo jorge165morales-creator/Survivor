@@ -8,6 +8,7 @@ import type {
   JoinLeagueInput,
   LoginInput,
   RegisterInput,
+  RegisterPushTokenInput,
   ResetPasswordInput,
   UpdateLeagueInput,
 } from "@survivor/shared-validation";
@@ -165,6 +166,8 @@ export const authApi = {
 
 export const usersApi = {
   me: (accessToken: string) => get<AuthUser>("/users/me", accessToken),
+  registerPushToken: (input: RegisterPushTokenInput, accessToken: string) =>
+    post<void>("/users/push-token", input, accessToken),
 };
 
 export const leaguesApi = {

@@ -13,6 +13,7 @@ import { StandingsModule } from "./standings/standings.module";
 import { GameEngineModule } from "./game-engine/game-engine.module";
 import { IngestionModule } from "./ingestion/ingestion.module";
 import { AdminModule } from "./admin/admin.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { AppController } from "./app.controller";
 
 @Module({
@@ -31,6 +32,7 @@ import { AppController } from "./app.controller";
     PicksModule,
     StandingsModule,
     AdminModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
 })

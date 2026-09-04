@@ -1,6 +1,8 @@
 import { createContext, use, useCallback, useEffect, type PropsWithChildren } from "react";
+import { Platform } from "react-native";
 import type { AuthTokensResponse, AuthUser } from "@survivor/shared-types";
-import { registerSessionBridge } from "@/api/client";
+import { registerSessionBridge, usersApi } from "@/api/client";
+import { getExpoPushToken } from "@/utils/notifications";
 import { useStorageState } from "./storage";
 
 interface Session {
@@ -60,6 +62,21 @@ export function SessionProvider({ children }: PropsWithChildren) {
       onRefreshFailed: () => setSession(null),
     });
   }, [session, setSession]);
+
+  // Registers this device's push token with the server on every sign-in
+  // (fresh login or a restored session) — keyed on the user id, not the
+  // whole session object, so a routine access-token refresh doesn't
+  // re-trigger it. Best-effort: getExpoPushToken() already swallows its own
+  // errors, and registration failing here shouldn't block anything else.
+  const userId = session?.user.id;
+  const accessToken = session?.accessToken;
+  useEffect(() => {
+    if (!userId || !accessToken) return;
+    getExpoPushToken().then((token) => {
+      if (!token) return;
+      void usersApi.registerPushToken({ token, platform: Platform.OS === "ios" ? "ios" : "android" }, accessToken);
+    });
+  }, [userId, accessToken]);
 
   return (
     <SessionContext value={{ session: session ?? null, isLoading, signIn, signOut }}>

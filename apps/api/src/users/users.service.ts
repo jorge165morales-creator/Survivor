@@ -26,6 +26,18 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { username } });
   }
 
+  // Upserts on `token` (not userId+token) since a push token is unique per
+  // device install, not per user — if someone logs out and a different
+  // person logs into the same device, the same token needs to now belong to
+  // the new user rather than still notifying whoever registered it first.
+  async registerPushToken(userId: string, token: string, platform: string): Promise<void> {
+    await this.prisma.pushToken.upsert({
+      where: { token },
+      create: { userId, token, platform },
+      update: { userId, platform },
+    });
+  }
+
   createWithPassword(email: string, passwordHash: string, displayName: string, username: string): Promise<User> {
     return this.prisma.user.create({ data: { email, passwordHash, displayName, username } });
   }

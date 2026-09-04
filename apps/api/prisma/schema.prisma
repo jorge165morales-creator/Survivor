@@ -106,6 +106,13 @@ model Matchday {
   type       MatchdayType
   roundLabel String
   lockAt     DateTime
+  // Set once the "picks lock in 1 hour" push has actually been sent for
+  // this matchday — see pick-reminder-scheduler.service.ts. Per-matchday
+  // rather than per-user: the notification is deliberately generic ("picks
+  // lock soon") regardless of who has/hasn't picked yet, so one flag here
+  // is enough to stop the cron from re-sending it every tick within the
+  // hour-before window.
+  reminderSentAt DateTime?
   fixtures   Fixture[]
   picks      Pick[]
   eliminationsHere LeagueMembership[] @relation("EliminatedAtMatchday")

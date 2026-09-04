@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
@@ -21,6 +22,27 @@ async function ensurePermission(): Promise<boolean> {
   hasRequestedPermission = true;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
+}
+
+/**
+ * The device's Expo push token, for registering with the API so
+ * pick-reminder-scheduler.service.ts (server-side) can actually reach this
+ * device — separate from the on-device syncPickReminder below, which needs
+ * no server round-trip at all. Returns null on web (push isn't supported
+ * there the same way) or if permission was denied; never throws, since a
+ * failed registration shouldn't block anything else in the app.
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const granted = await ensurePermission();
+    if (!granted) return null;
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 function reminderId(leagueId: string, matchdayId: string): string {
