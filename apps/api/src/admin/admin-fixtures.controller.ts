@@ -47,6 +47,11 @@ export class AdminFixturesController {
     return this.adminFixtures.reassignPicks(id, toFixtureId);
   }
 
+  @Post(":id/backfill-venue")
+  backfillVenue(@Param("id") id: string) {
+    return this.adminFixtures.backfillVenue(id);
+  }
+
   @Delete(":id")
   @HttpCode(204)
   delete(@Param("id") id: string) {

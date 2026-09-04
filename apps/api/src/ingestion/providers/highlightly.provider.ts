@@ -86,6 +86,23 @@ export class HighlightlyProvider implements SportsDataProvider {
     return page.data.filter((m) => wanted.has(String(m.id))).map(mapMatch);
   }
 
+  // Confirmed live (2026-09-03): populated for most matches but not all
+  // (notably sparse for neutral-venue knockout legs) — callers should treat
+  // a null return as "unknown", not as an error.
+  async getVenue(fixtureExternalId: string): Promise<string | null> {
+    const res = await fetch(`${API_BASE_URL}/matches/${fixtureExternalId}`, {
+      headers: { "x-rapidapi-key": this.config.getOrThrow("HIGHLIGHTLY_API_KEY") },
+    });
+    if (!res.ok) {
+      throw new Error(`Highlightly request failed: ${res.status} ${res.statusText}`);
+    }
+    const body = (await res.json()) as Array<{ venue?: { name: string | null; city: string | null } }>;
+    const venue = body[0]?.venue;
+    if (!venue) return null;
+    if (venue.name && venue.city) return `${venue.name}, ${venue.city}`;
+    return venue.name ?? venue.city ?? null;
+  }
+
   private async request(path: string): Promise<HighlightlyMatchesResponse> {
     const res = await fetch(`${API_BASE_URL}${path}`, {
       headers: { "x-rapidapi-key": this.config.getOrThrow("HIGHLIGHTLY_API_KEY") },

@@ -27,6 +27,6 @@ import { SPORTS_DATA_PROVIDER } from "./providers/sports-data.provider.interface
     // filtering in getLiveResults).
     { provide: SPORTS_DATA_PROVIDER, useClass: HighlightlyProvider },
   ],
-  exports: [IngestionService, SeasonSyncService, PracticeSeasonService],
+  exports: [IngestionService, SeasonSyncService, PracticeSeasonService, SPORTS_DATA_PROVIDER],
 })
 export class IngestionModule {}

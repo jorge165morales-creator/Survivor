@@ -55,7 +55,13 @@ export class IngestionService {
       },
       update: {
         kickoffAt: providerFixture.kickoffAt,
-        venue: providerFixture.venue,
+        // Never let a sync's null venue stomp a real one already stored —
+        // Highlightly's list endpoint (season-sync.service.ts's regular
+        // path) never carries venue at all, only its per-match detail
+        // endpoint does (see admin-fixtures.service.ts's backfillVenue),
+        // so every ordinary sync would otherwise silently erase a real
+        // venue the moment it ran again.
+        venue: providerFixture.venue ?? existing?.venue ?? null,
         status: providerFixture.status,
         homeScore: providerFixture.homeScore,
         awayScore: providerFixture.awayScore,

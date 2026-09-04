@@ -1,17 +1,38 @@
 import { randomUUID } from "node:crypto";
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { FixtureResult, FixtureStatus } from "@prisma/client";
 import type { AdminFixtureDetail } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { RecomputeService } from "../game-engine/recompute.service";
 import { computeFixtureResult } from "../game-engine/fixture-result";
+import { SPORTS_DATA_PROVIDER, type SportsDataProvider } from "../ingestion/providers/sports-data.provider.interface";
 
 @Injectable()
 export class AdminFixturesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly recompute: RecomputeService,
+    @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
   ) {}
+
+  // One-time-per-fixture venue fetch (see sports-data.provider.interface.ts)
+  // — safe to call repeatedly, since ingestion.service.ts's upsertFixture
+  // won't let a later regular sync's null venue overwrite this. Returns the
+  // fixture unchanged (not an error) if the provider doesn't support this or
+  // genuinely has no venue for this match.
+  async backfillVenue(fixtureId: string): Promise<AdminFixtureDetail> {
+    const fixture = await this.prisma.fixture.findUnique({ where: { id: fixtureId } });
+    if (!fixture) {
+      throw new NotFoundException("Fixture not found");
+    }
+    const venue = (await this.provider.getVenue?.(fixture.externalId)) ?? null;
+    const updated = await this.prisma.fixture.update({
+      where: { id: fixtureId },
+      data: { venue: venue ?? fixture.venue },
+      include: { homeTeam: true, awayTeam: true },
+    });
+    return this.toDetail(updated);
+  }
 
   async create(
     matchdayId: string,
