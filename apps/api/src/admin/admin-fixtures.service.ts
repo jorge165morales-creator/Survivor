@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { FixtureResult, FixtureStatus } from "@prisma/client";
 import type { AdminFixtureDetail } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
@@ -72,6 +72,24 @@ export class AdminFixturesService {
     await this.recompute.recomputeLeaguesForFixture(fixture.id);
 
     return this.toDetail(fixture);
+  }
+
+  // For cleaning up a bad manual entry — most commonly a fixture created by
+  // hand (e.g. admin/fixtures POST ahead of a working provider sync) that a
+  // later real sync doesn't recognize as the same match (different
+  // externalId) and duplicates instead of updating. Refuses to delete a
+  // fixture any real Pick already references, rather than silently
+  // orphaning someone's pick.
+  async delete(fixtureId: string): Promise<void> {
+    const fixture = await this.prisma.fixture.findUnique({ where: { id: fixtureId } });
+    if (!fixture) {
+      throw new NotFoundException("Fixture not found");
+    }
+    const pickCount = await this.prisma.pick.count({ where: { fixtureId } });
+    if (pickCount > 0) {
+      throw new ConflictException(`Cannot delete — ${pickCount} pick(s) already reference this fixture`);
+    }
+    await this.prisma.fixture.delete({ where: { id: fixtureId } });
   }
 
   private toDetail(fixture: {

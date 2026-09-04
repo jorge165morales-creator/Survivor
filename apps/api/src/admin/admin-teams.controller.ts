@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { createTeamSchema, type CreateTeamInput } from "@survivor/shared-validation";
 import { JwtAuthGuard } from "../common/jwt-auth.guard";
 import { AdminGuard } from "../common/admin.guard";
@@ -27,5 +27,11 @@ export class AdminTeamsController {
   @Post()
   create(@Body(new ZodValidationPipe(createTeamSchema)) body: CreateTeamInput) {
     return this.adminTeams.create(body.name, body.seasonId, body.shortName, body.crestUrl, body.externalId);
+  }
+
+  @Delete(":id")
+  @HttpCode(204)
+  delete(@Param("id") id: string) {
+    return this.adminTeams.delete(id);
   }
 }

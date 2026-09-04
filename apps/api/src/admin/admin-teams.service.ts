@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { AdminTeamDetail } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -44,5 +44,26 @@ export class AdminTeamsService {
       },
     });
     return team;
+  }
+
+  // Same reasoning as admin-fixtures.service.ts's delete() — cleaning up a
+  // manually-created team that a later real sync name-matched onto a
+  // different row instead of reconciling with, leaving this one orphaned.
+  // Refuses if anything still actually references it.
+  async delete(teamId: string): Promise<void> {
+    const team = await this.prisma.team.findUnique({ where: { id: teamId } });
+    if (!team) {
+      throw new NotFoundException("Team not found");
+    }
+    const [fixtureCount, pickCount] = await Promise.all([
+      this.prisma.fixture.count({ where: { OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }] } }),
+      this.prisma.pick.count({ where: { teamId } }),
+    ]);
+    if (fixtureCount > 0 || pickCount > 0) {
+      throw new ConflictException(
+        `Cannot delete — ${fixtureCount} fixture(s) and ${pickCount} pick(s) still reference this team`,
+      );
+    }
+    await this.prisma.team.delete({ where: { id: teamId } });
   }
 }
