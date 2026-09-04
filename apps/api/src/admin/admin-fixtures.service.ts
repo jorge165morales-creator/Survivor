@@ -74,6 +74,82 @@ export class AdminFixturesService {
     return this.toDetail(fixture);
   }
 
+  // Debug/support lookup — which league(s) and user(s) have already picked a
+  // given fixture, so an admin can decide how to handle a data-cleanup
+  // conflict (reassign vs. leave alone) with full information instead of
+  // guessing blind.
+  async findPicks(fixtureId: string) {
+    const picks = await this.prisma.pick.findMany({
+      where: { fixtureId },
+      include: {
+        league: { select: { id: true, name: true } },
+        user: { select: { id: true, displayName: true, username: true } },
+        team: { select: { name: true } },
+      },
+    });
+    return picks.map((p) => ({
+      pickId: p.id,
+      league: p.league,
+      user: p.user,
+      pickedTeam: p.team.name,
+    }));
+  }
+
+  // Moves every Pick (and its matching UsedTeam burn-record) off a fixture
+  // and onto another one representing the same real-world match — the
+  // scenario this exists for: a manually-entered fixture/team pair that a
+  // later real sync didn't recognize (different externalId/team name) and
+  // duplicated instead of reconciled, after a real pick already landed on
+  // the manual one. Assumes positional continuity (old home team's picks
+  // move to the new fixture's home team, same for away) since both fixtures
+  // are the same two clubs on the same real match, just different rows.
+  // Once this returns, delete(oldFixtureId) (and the old team rows, via
+  // admin-teams.service.ts's delete()) should succeed since nothing
+  // references them anymore.
+  async reassignPicks(
+    oldFixtureId: string,
+    newFixtureId: string,
+  ): Promise<{ picksMoved: number; usedTeamsMoved: number }> {
+    const [oldFixture, newFixture] = await Promise.all([
+      this.prisma.fixture.findUnique({ where: { id: oldFixtureId } }),
+      this.prisma.fixture.findUnique({ where: { id: newFixtureId } }),
+    ]);
+    if (!oldFixture || !newFixture) {
+      throw new NotFoundException("Fixture not found");
+    }
+    if (oldFixture.matchdayId !== newFixture.matchdayId) {
+      throw new ConflictException("Both fixtures must belong to the same matchday");
+    }
+
+    const teamIdMap = new Map<string, string>([
+      [oldFixture.homeTeamId, newFixture.homeTeamId],
+      [oldFixture.awayTeamId, newFixture.awayTeamId],
+    ]);
+
+    const picks = await this.prisma.pick.findMany({ where: { fixtureId: oldFixtureId } });
+    let usedTeamsMoved = 0;
+
+    for (const pick of picks) {
+      const newTeamId = teamIdMap.get(pick.teamId);
+      if (!newTeamId) {
+        throw new ConflictException(
+          `Pick ${pick.id}'s team isn't the home or away team of the old fixture — refusing to guess`,
+        );
+      }
+      await this.prisma.pick.update({
+        where: { id: pick.id },
+        data: { fixtureId: newFixtureId, teamId: newTeamId },
+      });
+      const updated = await this.prisma.usedTeam.updateMany({
+        where: { usedInPickId: pick.id },
+        data: { teamId: newTeamId },
+      });
+      usedTeamsMoved += updated.count;
+    }
+
+    return { picksMoved: picks.length, usedTeamsMoved };
+  }
+
   // For cleaning up a bad manual entry — most commonly a fixture created by
   // hand (e.g. admin/fixtures POST ahead of a working provider sync) that a
   // later real sync doesn't recognize as the same match (different

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
   adminFixtureOverrideSchema,
   createFixtureSchema,
@@ -35,6 +35,16 @@ export class AdminFixturesController {
     @Body(new ZodValidationPipe(adminFixtureOverrideSchema)) body: AdminFixtureOverrideInput,
   ) {
     return this.adminFixtures.overrideResult(id, adminUserId, body);
+  }
+
+  @Get(":id/picks")
+  findPicks(@Param("id") id: string) {
+    return this.adminFixtures.findPicks(id);
+  }
+
+  @Post(":id/reassign-picks")
+  reassignPicks(@Param("id") id: string, @Query("to") toFixtureId: string) {
+    return this.adminFixtures.reassignPicks(id, toFixtureId);
   }
 
   @Delete(":id")
