@@ -142,6 +142,7 @@ export class LeaguesService {
       members: league.memberships.map((m) => ({
         userId: m.userId,
         displayName: m.user.displayName,
+        username: m.user.username,
         avatarUrl: m.user.avatarUrl,
         status: m.status,
         isCommissioner: m.userId === league.commissionerId,

@@ -49,6 +49,7 @@ export interface MatchdaySummary {
 export interface LeagueMemberSummary {
   userId: string;
   displayName: string;
+  username: string;
   avatarUrl: string | null;
   status: MembershipStatus;
   isCommissioner: boolean;
@@ -161,6 +162,7 @@ export interface AdminFixtureDetail {
 export interface StandingsEntry {
   userId: string;
   displayName: string;
+  username: string;
   avatarUrl: string | null;
   status: MembershipStatus;
   eliminatedAtMatchdaySequence: number | null;
@@ -190,6 +192,7 @@ export interface StandingsGridCell {
 export interface StandingsGridRow {
   userId: string;
   displayName: string;
+  username: string;
   status: MembershipStatus;
   eliminatedAtMatchdaySequence: number | null;
   buyBackAvailable: boolean;

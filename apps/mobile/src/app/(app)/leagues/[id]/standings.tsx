@@ -302,6 +302,9 @@ function NameCell({
       <ThemedText type="smallBold" numberOfLines={1}>
         {row.displayName}
       </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        @{row.username}
+      </ThemedText>
       <ThemedText type="small" style={{ color: tint, fontWeight: '700' }}>
         {isAlive
           ? t.status.alive

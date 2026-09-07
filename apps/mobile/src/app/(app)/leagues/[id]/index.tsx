@@ -219,6 +219,10 @@ function MemberRow({
       <ThemedText type="small">
         {member.displayName}
         {member.isCommissioner ? t.leagueDetail.adminTag : ''}
+        {' '}
+        <ThemedText type="small" themeColor="textSecondary">
+          @{member.username}
+        </ThemedText>
       </ThemedText>
       <View style={styles.memberRowRight}>
         <View style={[styles.statusPill, { backgroundColor: statusColor + '22' }]}>

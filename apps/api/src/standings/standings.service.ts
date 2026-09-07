@@ -32,6 +32,7 @@ export class StandingsService {
       .map((m) => ({
         userId: m.userId,
         displayName: m.user.displayName,
+        username: m.user.username,
         avatarUrl: m.user.avatarUrl,
         status: m.status,
         eliminatedAtMatchdaySequence: m.eliminatedAtMatchday?.sequence ?? null,
@@ -151,6 +152,7 @@ export class StandingsService {
         return {
           userId: m.userId,
           displayName: m.user.displayName,
+          username: m.user.username,
           status: m.status,
           eliminatedAtMatchdaySequence: m.eliminatedAtMatchday?.sequence ?? null,
           buyBackAvailable: m.buyBackAvailable,
