@@ -205,6 +205,10 @@ export const en = {
         body: "If a matchday locks and you never submitted a pick, you are eliminated — the same as if your pick had lost.\n\nTip: You can populate future matches from the beginning and change them later as the tournament moves. If you forget you will still have a pick!",
       },
       {
+        title: 'Knockout legs are scored one at a time',
+        body: "Each leg of a two-legged knockout tie is its own matchday, judged only by that match's final score — extra time included, penalty shootout not. Aggregate score, away goals, and who advances don't matter.\n\n• You pick Bayern for the second leg. Bayern lose 1–2 but go through on aggregate and win the shootout — you're still eliminated.\n• 1–1 after 90 minutes, then your team concedes in extra time to lose 1–2 — that's a loss, extra-time goals count.\n• 1–1 after extra time, your team wins on penalties — counts as a draw, you survive.\n• Your team loses the first leg 0–1, then wins the second leg 3–0 on a later matchday — the first-leg pick was already an elimination.",
+      },
+      {
         title: 'Buy-back (if enabled by your admin)',
         body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
       },
@@ -418,6 +422,10 @@ export const es: typeof en = {
       {
         title: 'No elegir te elimina',
         body: 'Si una jornada se bloquea y nunca enviaste una selección, quedas eliminado — igual que si tu selección hubiera perdido.\n\nConsejo: puedes elegir tus selecciones para partidos futuros desde el principio y cambiarlas más adelante a medida que avanza el torneo. Si se te olvida, ¡igual tendrás una selección hecha!',
+      },
+      {
+        title: 'Las eliminatorias se puntúan partido por partido',
+        body: 'Cada partido de una eliminatoria a doble partido es su propia jornada, y se juzga solo por el marcador final de ese partido — con prórroga, pero sin la tanda de penales. El marcador global, los goles de visitante y quién avanza no influyen.\n\n• Eliges Bayern para la vuelta. El Bayern pierde 1–2 pero avanza en el global y gana la tanda — quedas eliminado igualmente.\n• 1–1 tras 90 minutos y tu equipo encaja en la prórroga para perder 1–2 — es una derrota, los goles de la prórroga cuentan.\n• 1–1 tras la prórroga y tu equipo gana en los penales — cuenta como empate, sobrevives.\n• Tu equipo pierde la ida 0–1 y luego gana la vuelta 3–0 en una jornada posterior — la selección de la ida ya fue una eliminación.',
       },
       {
         title: 'Recompra (si tu admin la habilita)',
