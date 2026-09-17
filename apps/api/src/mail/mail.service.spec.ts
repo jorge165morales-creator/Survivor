@@ -101,6 +101,24 @@ describe("MailService via SendGrid", () => {
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
+  // The actual live bug: MAIL_FROM entered without the "<...>" wrapper at
+  // all, e.g. "Survivor survivorpoolapp@gmail.com" — previously the whole
+  // string was sent as the email address and SendGrid rejected it outright.
+  it("extracts the address from MAIL_FROM with no angle brackets", async () => {
+    const service = new MailService(
+      makeConfig({
+        SENDGRID_API_KEY: "sg_test",
+        MAIL_FROM: "Survivor survivorpoolapp@gmail.com",
+        FRONTEND_URL: "https://example.com",
+      }),
+    );
+
+    await service.sendPasswordResetEmail("user@example.com", "https://example.com/reset?token=abc");
+
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.from).toEqual({ name: "Survivor", email: "survivorpoolapp@gmail.com" });
+  });
+
   it("parses an unquoted MAIL_FROM the same way", async () => {
     const service = new MailService(
       makeConfig({

@@ -5,17 +5,28 @@ import * as nodemailer from "nodemailer";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
-// MAIL_FROM is "Name <email>" (for Resend/nodemailer, which accept that
-// combined form directly) or a bare email — SendGrid's API wants them split.
-// Also tolerates the whole value being wrapped in quotes (e.g. pasted
-// verbatim from a .env-style example, quotes and all) — stripped first so
-// the "<...>" match isn't thrown off by a trailing quote after the ">".
+// MAIL_FROM is meant to be "Name <email>" (for Resend/nodemailer, which
+// accept that combined form directly) or a bare email — SendGrid's API wants
+// them split. Tolerates a few common ways this gets entered wrong in an env
+// var, so a formatting slip can't silently break every outgoing email the
+// way a missing "<>" already has once:
+// - the whole value wrapped in quotes (pasted verbatim from an example)
+// - the angle brackets left off entirely, e.g. "Survivor foo@bar.com"
 function parseFrom(rawFrom: string): { name?: string; email: string } {
   const from = rawFrom.trim().replace(/^"|"$/g, "");
-  const match = from.match(/^(.*)<(.+)>$/);
-  if (!match) return { email: from.trim() };
-  const name = match[1].trim().replace(/^"|"$/g, "");
-  return { name: name || undefined, email: match[2].trim() };
+  const bracketed = from.match(/^(.*)<(.+)>$/);
+  if (bracketed) {
+    const name = bracketed[1].trim().replace(/^"|"$/g, "");
+    return { name: name || undefined, email: bracketed[2].trim() };
+  }
+  // No brackets — if there's an email-shaped token anywhere in the string,
+  // treat that as the address and whatever's left as the display name.
+  const emailMatch = from.match(/\S+@\S+\.\S+/);
+  if (emailMatch) {
+    const name = from.replace(emailMatch[0], "").trim();
+    return { name: name || undefined, email: emailMatch[0] };
+  }
+  return { email: from };
 }
 
 @Injectable()
