@@ -67,3 +67,52 @@ describe("MailService", () => {
     expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("FRONTEND_URL is not set"));
   });
 });
+
+describe("MailService via SendGrid", () => {
+  let fetchSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({ ok: true } as Response);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // This is the exact bug hit live: pasting MAIL_FROM with the same quotes
+  // shown in .env.example (quotes included, not just the value) sent the
+  // whole quoted string as the "email" field and SendGrid rejected it.
+  it("strips surrounding quotes from a quoted MAIL_FROM before sending", async () => {
+    const service = new MailService(
+      makeConfig({
+        SENDGRID_API_KEY: "sg_test",
+        MAIL_FROM: '"Survivor <survivorpoolapp@gmail.com>"',
+        FRONTEND_URL: "https://example.com",
+      }),
+    );
+
+    await service.sendPasswordResetEmail("user@example.com", "https://example.com/reset?token=abc");
+
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.from).toEqual({ name: "Survivor", email: "survivorpoolapp@gmail.com" });
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("parses an unquoted MAIL_FROM the same way", async () => {
+    const service = new MailService(
+      makeConfig({
+        SENDGRID_API_KEY: "sg_test",
+        MAIL_FROM: "Survivor <survivorpoolapp@gmail.com>",
+        FRONTEND_URL: "https://example.com",
+      }),
+    );
+
+    await service.sendPasswordResetEmail("user@example.com", "https://example.com/reset?token=abc");
+
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.from).toEqual({ name: "Survivor", email: "survivorpoolapp@gmail.com" });
+  });
+});

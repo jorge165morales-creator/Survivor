@@ -7,7 +7,11 @@ const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
 // MAIL_FROM is "Name <email>" (for Resend/nodemailer, which accept that
 // combined form directly) or a bare email — SendGrid's API wants them split.
-function parseFrom(from: string): { name?: string; email: string } {
+// Also tolerates the whole value being wrapped in quotes (e.g. pasted
+// verbatim from a .env-style example, quotes and all) — stripped first so
+// the "<...>" match isn't thrown off by a trailing quote after the ">".
+function parseFrom(rawFrom: string): { name?: string; email: string } {
+  const from = rawFrom.trim().replace(/^"|"$/g, "");
   const match = from.match(/^(.*)<(.+)>$/);
   if (!match) return { email: from.trim() };
   const name = match[1].trim().replace(/^"|"$/g, "");
