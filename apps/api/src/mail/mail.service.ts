@@ -41,6 +41,14 @@ export class MailService {
             user: this.config.getOrThrow<string>("SMTP_USER"),
             pass: this.config.getOrThrow<string>("SMTP_PASS"),
           },
+          // Some hosts (e.g. Render) block or silently drop outbound SMTP
+          // connections entirely. Nodemailer's defaults (2 min connection
+          // timeout, 10 min socket timeout) would otherwise hang the whole
+          // request that triggered the email — fail fast instead so a broken
+          // mail provider can never block auth/reset requests.
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 10_000,
         })
       : null;
   }
@@ -65,31 +73,41 @@ export class MailService {
     const from = this.config.get<string>("MAIL_FROM") ?? "Survivor <no-reply@survivor.app>";
     const resendApiKey = this.config.get<string>("RESEND_API_KEY");
 
-    if (resendApiKey) {
-      const res = await fetch(RESEND_API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ from, to, subject, text }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`Resend request failed: ${res.status} ${body}`);
+    // A failed/hung send must never surface to the caller: forgotPassword
+    // deliberately resolves the same way whether or not the email actually
+    // goes out, so the response can't be used to enumerate accounts (see
+    // auth.service.ts). Log it instead — that's the only way a real delivery
+    // problem (bad credentials, a blocked SMTP port, a provider outage) is
+    // ever going to be visible.
+    try {
+      if (resendApiKey) {
+        const res = await fetch(RESEND_API_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ from, to, subject, text }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`Resend request failed: ${res.status} ${body}`);
+        }
+        return;
       }
-      return;
-    }
 
-    if (this.transporter) {
-      await this.transporter.sendMail({ from, to, subject, text });
-      return;
-    }
+      if (this.transporter) {
+        await this.transporter.sendMail({ from, to, subject, text });
+        return;
+      }
 
-    // Neither Resend nor SMTP configured (the local-dev default) — log
-    // instead of sending, so the reset flow stays fully testable without
-    // real mail infrastructure. Set RESEND_API_KEY (or SMTP_HOST/USER/PASS)
-    // to send for real.
-    this.logger.log(`[DEV EMAIL] To: ${to}\nSubject: ${subject}\n\n${text}`);
+      // Neither Resend nor SMTP configured (the local-dev default) — log
+      // instead of sending, so the reset flow stays fully testable without
+      // real mail infrastructure. Set RESEND_API_KEY (or SMTP_HOST/USER/PASS)
+      // to send for real.
+      this.logger.log(`[DEV EMAIL] To: ${to}\nSubject: ${subject}\n\n${text}`);
+    } catch (err) {
+      this.logger.error(`Failed to send email to ${to}: ${err instanceof Error ? err.message : err}`);
+    }
   }
 }
