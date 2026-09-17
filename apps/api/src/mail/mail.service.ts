@@ -11,6 +11,27 @@ export class MailService {
 
   constructor(private readonly config: ConfigService) {
     const host = this.config.get<string>("SMTP_HOST");
+    const resendApiKey = this.config.get<string>("RESEND_API_KEY");
+
+    // Neither of these failing closed is visible any other way: forgotPassword
+    // deliberately resolves the same way whether or not the send succeeds (so
+    // the response can't be used to enumerate accounts), and the "no provider
+    // configured" branch below logs instead of throwing. Both are correct for
+    // local dev, but if they're still true in a deployed environment, real
+    // users silently never get a password-reset email at all — flag it loudly
+    // at boot, once, rather than let that go unnoticed like it already did.
+    if (!resendApiKey && !host) {
+      this.logger.warn(
+        "No email provider configured (RESEND_API_KEY or SMTP_HOST) — outgoing emails will be logged, not sent. " +
+          "Fine for local dev; if this is a deployed environment, password reset and other emails are not reaching users.",
+      );
+    }
+    if (!this.config.get<string>("FRONTEND_URL")) {
+      this.logger.warn(
+        "FRONTEND_URL is not set — password-reset links will point to http://localhost:8081, which real users can't open.",
+      );
+    }
+
     this.transporter = host
       ? nodemailer.createTransport({
           host,
