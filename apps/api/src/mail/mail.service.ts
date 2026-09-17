@@ -3,6 +3,16 @@ import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
+const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
+
+// MAIL_FROM is "Name <email>" (for Resend/nodemailer, which accept that
+// combined form directly) or a bare email — SendGrid's API wants them split.
+function parseFrom(from: string): { name?: string; email: string } {
+  const match = from.match(/^(.*)<(.+)>$/);
+  if (!match) return { email: from.trim() };
+  const name = match[1].trim().replace(/^"|"$/g, "");
+  return { name: name || undefined, email: match[2].trim() };
+}
 
 @Injectable()
 export class MailService {
@@ -12,17 +22,18 @@ export class MailService {
   constructor(private readonly config: ConfigService) {
     const host = this.config.get<string>("SMTP_HOST");
     const resendApiKey = this.config.get<string>("RESEND_API_KEY");
+    const sendgridApiKey = this.config.get<string>("SENDGRID_API_KEY");
 
-    // Neither of these failing closed is visible any other way: forgotPassword
+    // None of these failing closed is visible any other way: forgotPassword
     // deliberately resolves the same way whether or not the send succeeds (so
     // the response can't be used to enumerate accounts), and the "no provider
     // configured" branch below logs instead of throwing. Both are correct for
     // local dev, but if they're still true in a deployed environment, real
     // users silently never get a password-reset email at all — flag it loudly
     // at boot, once, rather than let that go unnoticed like it already did.
-    if (!resendApiKey && !host) {
+    if (!resendApiKey && !sendgridApiKey && !host) {
       this.logger.warn(
-        "No email provider configured (RESEND_API_KEY or SMTP_HOST) — outgoing emails will be logged, not sent. " +
+        "No email provider configured (SENDGRID_API_KEY, RESEND_API_KEY, or SMTP_HOST) — outgoing emails will be logged, not sent. " +
           "Fine for local dev; if this is a deployed environment, password reset and other emails are not reaching users.",
       );
     }
@@ -72,6 +83,7 @@ export class MailService {
   private async send(to: string, subject: string, text: string): Promise<void> {
     const from = this.config.get<string>("MAIL_FROM") ?? "Survivor <no-reply@survivor.app>";
     const resendApiKey = this.config.get<string>("RESEND_API_KEY");
+    const sendgridApiKey = this.config.get<string>("SENDGRID_API_KEY");
 
     // A failed/hung send must never surface to the caller: forgotPassword
     // deliberately resolves the same way whether or not the email actually
@@ -80,6 +92,32 @@ export class MailService {
     // problem (bad credentials, a blocked SMTP port, a provider outage) is
     // ever going to be visible.
     try {
+      // SendGrid's free tier only requires verifying a single sender email
+      // (no domain/DNS needed, unlike Resend without a verified domain) and
+      // sends over HTTPS — not blocked the way outbound SMTP can be on hosts
+      // like Render.
+      if (sendgridApiKey) {
+        const { name, email } = parseFrom(from);
+        const res = await fetch(SENDGRID_API_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${sendgridApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: to }] }],
+            from: { email, name },
+            subject,
+            content: [{ type: "text/plain", value: text }],
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`SendGrid request failed: ${res.status} ${body}`);
+        }
+        return;
+      }
+
       if (resendApiKey) {
         const res = await fetch(RESEND_API_URL, {
           method: "POST",

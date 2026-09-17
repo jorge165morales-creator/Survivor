@@ -36,6 +36,12 @@ describe("MailService", () => {
     expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("No email provider configured"));
   });
 
+  it("does not warn about the provider when SENDGRID_API_KEY is set", () => {
+    new MailService(makeConfig({ SENDGRID_API_KEY: "sg_test", FRONTEND_URL: "https://example.com" }));
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining("No email provider configured"));
+  });
+
   it("does not warn about the provider when SMTP_HOST is set", () => {
     new MailService(
       makeConfig({
