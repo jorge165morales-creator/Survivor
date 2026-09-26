@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { ensureUclCompetition } from "./competitions";
 import { FootballDataOrgProvider } from "./providers/football-data-org.provider";
 import { groupProviderFixturesIntoMatchdays } from "./round-mapping";
 import { resolveTeam } from "./team-resolution";
@@ -70,12 +71,14 @@ export class PracticeSeasonService {
       throw new Error("football-data.org returned no mappable fixtures for the replay source season");
     }
 
+    const competition = await ensureUclCompetition(this.prisma);
     const season = await this.prisma.season.create({
       data: {
         name: `Champions League Practice League (${REPLAY_SOURCE_SEASON_YEAR}/${String(REPLAY_SOURCE_SEASON_YEAR + 1).slice(2)} Replay)`,
         year: REPLAY_SOURCE_SEASON_YEAR,
         isActive: false,
         isPractice: true,
+        competitionId: competition.id,
       },
     });
 

@@ -3,10 +3,9 @@ import { ConfigService } from "@nestjs/config";
 import type { ProviderFixture, SportsDataProvider } from "./sports-data.provider.interface";
 
 const API_BASE_URL = "https://soccer.highlightly.net";
-const LEAGUE_NAME = "UEFA Champions League";
 // The API rejects any limit above this — getFixtures pages through with
-// offset to collect a full season (~150-170 matches with the knockout
-// rounds included).
+// offset to collect a full season (~150-170 matches for a group-and-knockout
+// competition, ~380 for a 20-club round robin).
 const MAX_LIMIT = 100;
 
 // Highlightly's match-state descriptions, mapped to our own FixtureStatus.
@@ -48,28 +47,33 @@ interface HighlightlyMatchesResponse {
  * Talks to Highlightly's free tier (100 req/day) via the "direct" host
  * (soccer.highlightly.net) — confirmed live against a real key to return
  * "All data available with current plan" for the free BASIC tier, unlike
- * API-Football's free plan, which is season-gated. Filters by leagueName
- * rather than a numeric competition id — competitionExternalId is accepted
- * only to satisfy SportsDataProvider's shared interface and is otherwise
- * unused here.
+ * API-Football's free plan, which is season-gated. Filters by the numeric
+ * `leagueId` (Competition.highlightlyLeagueId) — confirmed live this is
+ * required, not just nice-to-have: Highlightly has multiple leagues literally
+ * named "Premier League" (England, Wales, Belarus, Egypt, Russia, Kenya),
+ * so filtering by name alone is ambiguous.
  *
- * getLiveResults deliberately doesn't filter by id server-side — the API
- * has no ids/round query param (confirmed: both 400 "property ... should
- * not exist"), so a whole matchday's live fixtures are instead fetched with
- * one date-filtered request and then narrowed to the requested ids
- * client-side. That keeps the cost model the polling scheduler already
- * assumes (~1 request per poll, see ingestion-scheduler.service.ts) intact.
+ * getLiveResults deliberately doesn't filter by fixture id server-side — the
+ * API has no ids param (confirmed: 400 "property ... should not exist"), so
+ * a whole matchday's live fixtures are instead fetched with one
+ * date-filtered request and then narrowed to the requested ids client-side.
+ * That request is still scoped by leagueId (confirmed live: dropping it
+ * returns 500+ matches across every league worldwide for a given date,
+ * paginated at 100/page — several requests just to page through one poll,
+ * which would blow the daily budget). That's exactly why this method takes
+ * competitionExternalId: a caller polling fixtures across N competitions
+ * must call this once per competition, not once globally.
  */
 @Injectable()
 export class HighlightlyProvider implements SportsDataProvider {
   constructor(private readonly config: ConfigService) {}
 
-  async getFixtures(_competitionExternalId: string, seasonYear: number): Promise<ProviderFixture[]> {
+  async getFixtures(competitionExternalId: string, seasonYear: number): Promise<ProviderFixture[]> {
     const all: HighlightlyMatch[] = [];
     let offset = 0;
     for (;;) {
       const page = await this.request(
-        `/matches?leagueName=${encodeURIComponent(LEAGUE_NAME)}&season=${seasonYear}&limit=${MAX_LIMIT}&offset=${offset}`,
+        `/matches?leagueId=${competitionExternalId}&season=${seasonYear}&limit=${MAX_LIMIT}&offset=${offset}`,
       );
       all.push(...page.data);
       if (page.data.length < MAX_LIMIT) break;
@@ -78,10 +82,10 @@ export class HighlightlyProvider implements SportsDataProvider {
     return all.map(mapMatch);
   }
 
-  async getLiveResults(fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
+  async getLiveResults(competitionExternalId: string, fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
     if (fixtureExternalIds.length === 0) return [];
     const today = new Date().toISOString().slice(0, 10);
-    const page = await this.request(`/matches?leagueName=${encodeURIComponent(LEAGUE_NAME)}&date=${today}`);
+    const page = await this.request(`/matches?leagueId=${competitionExternalId}&date=${today}`);
     const wanted = new Set(fixtureExternalIds);
     return page.data.filter((m) => wanted.has(String(m.id))).map(mapMatch);
   }

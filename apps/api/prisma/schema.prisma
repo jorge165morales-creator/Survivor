@@ -74,6 +74,41 @@ model PushToken {
 
 // ---------- Competition data (shared across all leagues) ----------
 
+// A stable competition (e.g. "Premier League") as opposed to one year's
+// instance of it (Season) — provider ids and structure are properties of the
+// competition itself, not of a given year's season.
+enum CompetitionStructure {
+  // League Phase / group-style rounds followed by two-legged knockout
+  // rounds and a single final — e.g. the Champions League. See
+  // round-mapping.ts for how this shape's matchdays get derived.
+  GROUP_AND_KNOCKOUT
+  // One round-robin gameweek per matchday, no knockout rounds at all — e.g.
+  // Premier League, La Liga.
+  ROUND_ROBIN
+}
+
+model Competition {
+  id     String @id @default(uuid())
+  name   String
+  // Stable key used in code (round-mapping selection, UI copy) — independent
+  // of `name`, which is just display text.
+  slug   String @unique
+
+  structure     CompetitionStructure
+  // Total matchdays a season of this competition produces — 17 for the
+  // Champions League's current 36-club league-phase format, 38 for a
+  // 20-club round robin. Used to pre-create a season's matchdays.
+  matchdayCount Int
+
+  // Provider-specific external ids for this competition — each provider
+  // identifies competitions differently, and not every provider necessarily
+  // covers every competition, so both are optional.
+  highlightlyLeagueId String?
+  apiFootballLeagueId String?
+
+  seasons Season[]
+}
+
 model Season {
   id        String     @id @default(uuid())
   name      String
@@ -84,6 +119,8 @@ model Season {
   // excluded from ingestion-scheduler.service.ts's live-poll window since its
   // fixtures resolve via practice-replay-scheduler.service.ts instead.
   isPractice Boolean   @default(false)
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id])
   matchdays Matchday[]
   teams     Team[]     @relation("SeasonTeams")
   leagues   League[]

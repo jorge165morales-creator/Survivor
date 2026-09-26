@@ -4,10 +4,18 @@ import { IngestionService } from "./ingestion.service";
 import { SeasonSyncService } from "./season-sync.service";
 import type { ProviderFixture, SportsDataProvider } from "./providers/sports-data.provider.interface";
 
-function makePrisma(fixtures: Array<{ externalId: string; matchdayId: string }>) {
+function makePrisma(
+  fixtures: Array<{ externalId: string; matchdayId: string; highlightlyLeagueId?: string | null }>,
+) {
   return {
     fixture: {
-      findMany: jest.fn().mockResolvedValue(fixtures),
+      findMany: jest.fn().mockResolvedValue(
+        fixtures.map((f) => ({
+          externalId: f.externalId,
+          matchdayId: f.matchdayId,
+          matchday: { season: { competition: { highlightlyLeagueId: f.highlightlyLeagueId ?? "ucl-id" } } },
+        })),
+      ),
     },
   } as unknown as PrismaService;
 }
@@ -69,9 +77,54 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
     await scheduler.pollLiveMatchdays();
 
     expect(provider.getLiveResults).toHaveBeenCalledTimes(1);
-    expect(provider.getLiveResults).toHaveBeenCalledWith(["fixture-a", "fixture-b"]);
+    expect(provider.getLiveResults).toHaveBeenCalledWith("ucl-id", ["fixture-a", "fixture-b"]);
     expect(ingestion.upsertFixture).toHaveBeenCalledWith("matchday-1", expect.objectContaining({ externalId: "fixture-a" }));
     expect(ingestion.upsertFixture).toHaveBeenCalledWith("matchday-1", expect.objectContaining({ externalId: "fixture-b" }));
+  });
+
+  it("calls getLiveResults once per distinct competition when multiple are live at once", async () => {
+    const prisma = makePrisma([
+      { externalId: "fixture-a", matchdayId: "matchday-1", highlightlyLeagueId: "ucl-id" },
+      { externalId: "fixture-b", matchdayId: "matchday-2", highlightlyLeagueId: "epl-id" },
+    ]);
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = {
+      getLiveResults: jest
+        .fn()
+        .mockResolvedValueOnce([providerFixture({ externalId: "fixture-a" })])
+        .mockResolvedValueOnce([providerFixture({ externalId: "fixture-b" })]),
+      getFixtures: jest.fn(),
+    } as unknown as SportsDataProvider;
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+
+    await scheduler.pollLiveMatchdays();
+
+    expect(provider.getLiveResults).toHaveBeenCalledTimes(2);
+    expect(provider.getLiveResults).toHaveBeenCalledWith("ucl-id", ["fixture-a"]);
+    expect(provider.getLiveResults).toHaveBeenCalledWith("epl-id", ["fixture-b"]);
+    expect(ingestion.upsertFixture).toHaveBeenCalledWith("matchday-1", expect.objectContaining({ externalId: "fixture-a" }));
+    expect(ingestion.upsertFixture).toHaveBeenCalledWith("matchday-2", expect.objectContaining({ externalId: "fixture-b" }));
+  });
+
+  it("isolates one competition's poll failure from another's", async () => {
+    const prisma = makePrisma([
+      { externalId: "fixture-a", matchdayId: "matchday-1", highlightlyLeagueId: "ucl-id" },
+      { externalId: "fixture-b", matchdayId: "matchday-2", highlightlyLeagueId: "epl-id" },
+    ]);
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = {
+      getLiveResults: jest
+        .fn()
+        .mockRejectedValueOnce(new Error("Highlightly request failed: 500"))
+        .mockResolvedValueOnce([providerFixture({ externalId: "fixture-b" })]),
+      getFixtures: jest.fn(),
+    } as unknown as SportsDataProvider;
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+
+    await expect(scheduler.pollLiveMatchdays()).resolves.not.toThrow();
+
+    expect(ingestion.upsertFixture).toHaveBeenCalledTimes(1);
+    expect(ingestion.upsertFixture).toHaveBeenCalledWith("matchday-2", expect.objectContaining({ externalId: "fixture-b" }));
   });
 
   it("ignores a provider result for a fixture outside what was requested", async () => {

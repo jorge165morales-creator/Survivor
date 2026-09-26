@@ -1,5 +1,6 @@
 import { PrismaClient, MatchdayType, type FixtureResult } from "@prisma/client";
 import { computeFixtureResult } from "../src/game-engine/fixture-result";
+import { ensureUclCompetition } from "../src/ingestion/competitions";
 import { TEAM_CRESTS_2025_26 } from "./team-crests-2025-26";
 import {
   LEAGUE_PHASE_RESULTS,
@@ -135,8 +136,9 @@ export async function seedUpcomingSeason(prisma: PrismaClient): Promise<void> {
     return;
   }
 
+  const competition = await ensureUclCompetition(prisma);
   const season = await prisma.season.create({
-    data: { name: "UEFA Champions League 2026/27", year: 2026, isActive: true },
+    data: { name: "UEFA Champions League 2026/27", year: 2026, isActive: true, competitionId: competition.id },
   });
 
   const teams = await Promise.all(
@@ -178,8 +180,9 @@ export async function seedHistoricalTestSeason(prisma: PrismaClient): Promise<vo
     return;
   }
 
+  const competition = await ensureUclCompetition(prisma);
   const season = await prisma.season.create({
-    data: { name: "UEFA Champions League 2025/26 (Test Data)", year: YEAR, isActive: false },
+    data: { name: "UEFA Champions League 2025/26 (Test Data)", year: YEAR, isActive: false, competitionId: competition.id },
   });
 
   const teamNames = Object.keys(TEAM_CRESTS_2025_26);

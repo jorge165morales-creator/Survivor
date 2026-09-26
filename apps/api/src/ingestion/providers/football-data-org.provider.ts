@@ -84,7 +84,10 @@ export class FootballDataOrgProvider implements SportsDataProvider {
     return matchesData.matches.map((m) => mapMatch(m, venueByTeamId));
   }
 
-  async getLiveResults(fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
+  // competitionExternalId is unused: football-data.org filters directly by
+  // fixture id server-side, same as API-Football — see
+  // SportsDataProvider's doc comment.
+  async getLiveResults(_competitionExternalId: string, fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
     if (fixtureExternalIds.length === 0) return [];
     const data = await this.request<FootballDataMatchesResponse>(`/matches?ids=${fixtureExternalIds.join(",")}`);
     return data.matches.map((m) => mapMatch(m, new Map()));

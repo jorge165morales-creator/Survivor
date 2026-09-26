@@ -5,14 +5,6 @@ import { groupProviderFixturesIntoMatchdays } from "./round-mapping";
 import { resolveTeam } from "./team-resolution";
 import { SPORTS_DATA_PROVIDER, type ProviderFixture, type SportsDataProvider } from "./providers/sports-data.provider.interface";
 
-// This app is UEFA Champions League-only — no per-season/competition config
-// exists anywhere else in the schema, so hardcoding a competition id here
-// matches that rather than adding a column nothing else would use. Only
-// meaningful to API-Football's provider (league id "2") — the currently
-// wired HighlightlyProvider ignores this param entirely and filters by
-// league name internally instead (see highlightly.provider.ts).
-const UEFA_CHAMPIONS_LEAGUE_ID = "2";
-
 export interface SeasonSyncSummary {
   seasonId: string;
   matchdaysUpdated: number;
@@ -43,11 +35,23 @@ export class SeasonSyncService {
   ) {}
 
   async syncActiveSeasons(): Promise<SeasonSyncSummary[]> {
-    const seasons = await this.prisma.season.findMany({ where: { isActive: true } });
+    const seasons = await this.prisma.season.findMany({
+      where: { isActive: true },
+      include: { competition: true },
+    });
     const summaries: SeasonSyncSummary[] = [];
     for (const season of seasons) {
       try {
-        summaries.push(await this.syncSeason(season.id, season.year));
+        // Hardcoded to the same field ingestion-scheduler.service.ts reads —
+        // both need updating together if the active provider ever changes
+        // (see ingestion.module.ts's SPORTS_DATA_PROVIDER wiring).
+        const competitionExternalId = season.competition.highlightlyLeagueId;
+        if (!competitionExternalId) {
+          this.logger.warn(`Season ${season.id}: competition "${season.competition.slug}" has no highlightlyLeagueId — skipping`);
+          summaries.push({ seasonId: season.id, matchdaysUpdated: 0, fixturesSynced: 0, error: "No provider id configured" });
+          continue;
+        }
+        summaries.push(await this.syncSeason(season.id, competitionExternalId, season.year));
       } catch (err) {
         this.logger.error(`Season sync failed for ${season.id}`, err instanceof Error ? err.stack : err);
         summaries.push({
@@ -61,8 +65,8 @@ export class SeasonSyncService {
     return summaries;
   }
 
-  async syncSeason(seasonId: string, seasonYear: number): Promise<SeasonSyncSummary> {
-    const providerFixtures = await this.provider.getFixtures(UEFA_CHAMPIONS_LEAGUE_ID, seasonYear);
+  async syncSeason(seasonId: string, competitionExternalId: string, seasonYear: number): Promise<SeasonSyncSummary> {
+    const providerFixtures = await this.provider.getFixtures(competitionExternalId, seasonYear);
     const groups = groupProviderFixturesIntoMatchdays(providerFixtures);
 
     let matchdaysUpdated = 0;

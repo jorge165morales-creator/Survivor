@@ -30,8 +30,18 @@ export interface ProviderFixture {
 export interface SportsDataProvider {
   /** Full fixture list for a competition/season — the infrequent off-matchday sync. */
   getFixtures(competitionExternalId: string, seasonYear: number): Promise<ProviderFixture[]>;
-  /** Targeted refresh for fixtures already known to be in progress — the tight matchday-window poll. */
-  getLiveResults(fixtureExternalIds: string[]): Promise<ProviderFixture[]>;
+  /**
+   * Targeted refresh for fixtures already known to be in progress — the tight
+   * matchday-window poll. Takes competitionExternalId because a provider
+   * that can't query by fixture id directly (e.g. Highlightly — see its
+   * getLiveResults) has to scope its one query to a single competition to
+   * stay within a free-tier request budget; a provider that filters by
+   * fixture id server-side (e.g. API-Football) can just ignore it. Callers
+   * must therefore call this once per distinct competition represented in
+   * fixtureExternalIds, not once globally — see
+   * ingestion-scheduler.service.ts.
+   */
+  getLiveResults(competitionExternalId: string, fixtureExternalIds: string[]): Promise<ProviderFixture[]>;
   /**
    * One fixture's venue, if the provider has it — optional because it's
    * costly (one request per fixture on providers like Highlightly, where

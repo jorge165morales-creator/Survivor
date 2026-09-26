@@ -70,7 +70,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture()]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    await service.syncSeason(SEASON_ID, 2026);
+    await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(teamUpdate).not.toHaveBeenCalled();
     expect(teamCreate).not.toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture()]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    await service.syncSeason(SEASON_ID, 2026);
+    await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(teamUpdate).toHaveBeenCalledWith({
       where: { id: "placeholder-uuid" },
@@ -100,7 +100,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture()]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    await service.syncSeason(SEASON_ID, 2026);
+    await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(teamCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -120,7 +120,7 @@ describe("SeasonSyncService.syncSeason", () => {
     ]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    await service.syncSeason(SEASON_ID, 2026);
+    await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(matchdayUpdate).toHaveBeenCalledWith({
       where: { id: MATCHDAY_ID },
@@ -137,7 +137,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture({ kickoffAt: new Date("2026-09-17T18:45:00Z") })]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    await service.syncSeason(SEASON_ID, 2026);
+    await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(matchdayUpdate).not.toHaveBeenCalled();
   });
@@ -148,7 +148,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture()]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    const summary = await service.syncSeason(SEASON_ID, 2026);
+    const summary = await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(summary).toEqual({ seasonId: SEASON_ID, matchdaysUpdated: 0, fixturesSynced: 0 });
     expect(ingestion.upsertFixture).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe("SeasonSyncService.syncSeason", () => {
     const provider = makeProvider([fixture({ round: "2nd Qualifying Round" })]);
     const service = new SeasonSyncService(prisma, ingestion, provider);
 
-    const summary = await service.syncSeason(SEASON_ID, 2026);
+    const summary = await service.syncSeason(SEASON_ID, "competition-ext-id", 2026);
 
     expect(summary.fixturesSynced).toBe(0);
     expect(ingestion.upsertFixture).not.toHaveBeenCalled();
@@ -172,8 +172,8 @@ describe("SeasonSyncService.syncActiveSeasons", () => {
     const prisma = {
       season: {
         findMany: jest.fn().mockResolvedValue([
-          { id: "active-1", year: 2026, isActive: true },
-          { id: "active-2", year: 2027, isActive: true },
+          { id: "active-1", year: 2026, isActive: true, competition: { slug: "ucl", highlightlyLeagueId: "2486" } },
+          { id: "active-2", year: 2027, isActive: true, competition: { slug: "ucl", highlightlyLeagueId: "2486" } },
         ]),
       },
       matchday: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -197,6 +197,28 @@ describe("SeasonSyncService.syncActiveSeasons", () => {
       { seasonId: "active-1", matchdaysUpdated: 0, fixturesSynced: 0, error: "API-Football request failed: 500" },
       { seasonId: "active-2", matchdaysUpdated: 0, fixturesSynced: 0 },
     ]);
-    expect(prisma.season.findMany).toHaveBeenCalledWith({ where: { isActive: true } });
+    expect(prisma.season.findMany).toHaveBeenCalledWith({ where: { isActive: true }, include: { competition: true } });
+  });
+
+  it("skips a season whose competition has no highlightlyLeagueId configured", async () => {
+    const prisma = {
+      season: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: "active-1", year: 2026, isActive: true, competition: { slug: "nfl", highlightlyLeagueId: null } },
+        ]),
+      },
+      matchday: { findUnique: jest.fn() },
+      team: {},
+    } as unknown as PrismaService;
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = { getFixtures: jest.fn(), getLiveResults: jest.fn() } as unknown as SportsDataProvider;
+    const service = new SeasonSyncService(prisma, ingestion, provider);
+
+    const summaries = await service.syncActiveSeasons();
+
+    expect(provider.getFixtures).not.toHaveBeenCalled();
+    expect(summaries).toEqual([
+      { seasonId: "active-1", matchdaysUpdated: 0, fixturesSynced: 0, error: "No provider id configured" },
+    ]);
   });
 });

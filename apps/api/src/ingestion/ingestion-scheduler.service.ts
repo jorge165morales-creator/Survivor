@@ -22,10 +22,12 @@ const POST_KICKOFF_WINDOW_MS = 3 * 60 * 60 * 1000;
  *
  * Free-tier-safe: the window query below is a local DB read, so it costs
  * nothing. The provider is only called when that query finds a fixture in
- * its kickoff window, and one getLiveResults call covers every simultaneous
- * fixture that matchday — so a full matchday evening (~9h window, 10-minute
- * cadence) costs ~54 requests, comfortably under API-Football's free-plan
- * 100/day cap.
+ * its kickoff window, and getLiveResults is called once per distinct
+ * competition represented (not once globally — see that method's doc
+ * comment on SportsDataProvider) — so a single-competition matchday evening
+ * (~9h window, 10-minute cadence) costs ~54 requests, comfortably under
+ * API-Football's free-plan 100/day cap. Running N competitions live at once
+ * multiplies that by N.
  */
 @Injectable()
 export class IngestionSchedulerService {
@@ -68,19 +70,43 @@ export class IngestionSchedulerService {
         // whichever real API this.provider talks to.
         matchday: { season: { isPractice: false } },
       },
-      select: { externalId: true, matchdayId: true },
+      select: {
+        externalId: true,
+        matchdayId: true,
+        // Highlightly's active-provider constant it needs to scope this
+        // poll to (see SportsDataProvider.getLiveResults's doc comment) —
+        // hardcoded to that field the same way ingestion.module.ts hardcodes
+        // HighlightlyProvider as SPORTS_DATA_PROVIDER; both need updating
+        // together if the active provider ever changes.
+        matchday: { select: { season: { select: { competition: { select: { highlightlyLeagueId: true } } } } } },
+      },
     });
     if (inWindow.length === 0) {
       return;
     }
 
     const matchdayIdByExternalId = new Map(inWindow.map((f) => [f.externalId, f.matchdayId]));
-    let results: Awaited<ReturnType<SportsDataProvider["getLiveResults"]>>;
-    try {
-      results = await this.provider.getLiveResults([...matchdayIdByExternalId.keys()]);
-    } catch (err) {
-      this.logger.error("Live-window poll failed", err instanceof Error ? err.stack : err);
-      return;
+    const externalIdsByCompetition = new Map<string, string[]>();
+    for (const f of inWindow) {
+      const competitionExternalId = f.matchday.season.competition.highlightlyLeagueId;
+      if (!competitionExternalId) continue; // competition not configured for the active provider
+      const list = externalIdsByCompetition.get(competitionExternalId);
+      if (list) {
+        list.push(f.externalId);
+      } else {
+        externalIdsByCompetition.set(competitionExternalId, [f.externalId]);
+      }
+    }
+
+    const results: Awaited<ReturnType<SportsDataProvider["getLiveResults"]>> = [];
+    for (const [competitionExternalId, fixtureExternalIds] of externalIdsByCompetition) {
+      try {
+        results.push(...(await this.provider.getLiveResults(competitionExternalId, fixtureExternalIds)));
+      } catch (err) {
+        // Isolated per-competition so one provider hiccup doesn't stop the
+        // poll from covering every other competition's live fixtures too.
+        this.logger.error(`Live-window poll failed for competition ${competitionExternalId}`, err instanceof Error ? err.stack : err);
+      }
     }
 
     for (const providerFixture of results) {

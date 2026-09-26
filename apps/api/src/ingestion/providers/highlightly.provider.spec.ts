@@ -92,9 +92,32 @@ describe("HighlightlyProvider", () => {
     await expect(provider.getFixtures("unused", 2026)).rejects.toThrow("Highlightly request failed");
   });
 
+  // Regression: previously filtered by a hardcoded leagueName, ambiguous
+  // since Highlightly has several leagues literally named "Premier League".
+  it("getFixtures filters by the given competition's numeric leagueId, not a hardcoded name", async () => {
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) } as Response);
+
+    await provider.getFixtures("33973", 2026);
+
+    expect(fetchSpy.mock.calls[0][0]).toContain("leagueId=33973");
+    expect(fetchSpy.mock.calls[0][0]).not.toContain("leagueName");
+  });
+
+  it("getLiveResults filters its date query by the given competition's leagueId too", async () => {
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) } as Response);
+
+    await provider.getLiveResults("33973", ["222"]);
+
+    expect(fetchSpy.mock.calls[0][0]).toContain("leagueId=33973");
+  });
+
   it("returns an empty array without calling fetch when no fixture IDs are requested", async () => {
     const fetchSpy = jest.spyOn(global, "fetch");
-    const result = await provider.getLiveResults([]);
+    const result = await provider.getLiveResults("2486", []);
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -108,7 +131,7 @@ describe("HighlightlyProvider", () => {
         }),
     } as Response);
 
-    const fixtures = await provider.getLiveResults(["222"]);
+    const fixtures = await provider.getLiveResults("2486", ["222"]);
 
     expect(fixtures).toHaveLength(1);
     expect(fixtures[0].externalId).toBe("222");

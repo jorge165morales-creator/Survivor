@@ -28,6 +28,7 @@ function fixture(overrides: Partial<ProviderFixture> = {}): ProviderFixture {
 function makePrisma() {
   const seasonFindFirst = jest.fn().mockResolvedValue(null);
   const seasonCreate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: "practice-season-id", ...data }));
+  const competitionUpsert = jest.fn().mockResolvedValue({ id: "ucl-competition-id" });
   const matchdayCreate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: `matchday-${data.sequence}`, ...data }));
   const fixtureCreate = jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: `fixture-${data.externalId}`, ...data }));
   const replayResultCreate = jest.fn().mockResolvedValue(undefined);
@@ -38,6 +39,7 @@ function makePrisma() {
   return {
     prisma: {
       season: { findFirst: seasonFindFirst, create: seasonCreate },
+      competition: { upsert: competitionUpsert },
       matchday: { create: matchdayCreate },
       fixture: { create: fixtureCreate },
       replayFixtureResult: { create: replayResultCreate },

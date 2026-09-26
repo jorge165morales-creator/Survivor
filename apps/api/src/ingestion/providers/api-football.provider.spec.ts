@@ -72,7 +72,7 @@ describe("ApiFootballProvider", () => {
 
   it("returns an empty array without calling fetch when no fixture IDs are requested", async () => {
     const fetchSpy = jest.spyOn(global, "fetch");
-    const result = await provider.getLiveResults([]);
+    const result = await provider.getLiveResults("2486", []);
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });

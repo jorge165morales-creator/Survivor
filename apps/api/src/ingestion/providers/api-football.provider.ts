@@ -68,7 +68,10 @@ export class ApiFootballProvider implements SportsDataProvider {
     return data.response.map(mapFixture);
   }
 
-  async getLiveResults(fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
+  // competitionExternalId is unused here: API-Football filters directly by
+  // fixture id server-side, so unlike Highlightly it never needs to be
+  // scoped to one competition per call — see SportsDataProvider's doc comment.
+  async getLiveResults(_competitionExternalId: string, fixtureExternalIds: string[]): Promise<ProviderFixture[]> {
     if (fixtureExternalIds.length === 0) return [];
     const data = await this.request(`/fixtures?ids=${fixtureExternalIds.join("-")}`);
     return data.response.map(mapFixture);
