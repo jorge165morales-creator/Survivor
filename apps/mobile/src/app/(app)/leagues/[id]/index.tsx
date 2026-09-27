@@ -11,7 +11,7 @@ import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { confirmAsync, notify } from '@/utils/alerts';
-import { goBackOrHome } from '@/utils/navigation';
+import { goBackOrHome, pushRulesFor } from '@/utils/navigation';
 import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -130,7 +130,7 @@ export default function LeagueDetailScreen() {
               </Pressable>
             </View>
 
-            <Pressable style={styles.rulesButton} onPress={() => router.push('/rules')}>
+            <Pressable style={styles.rulesButton} onPress={() => pushRulesFor(league.season.competition)}>
               <ThemedText type="linkPrimary">{t.leagueDetail.rules}</ThemedText>
             </Pressable>
 

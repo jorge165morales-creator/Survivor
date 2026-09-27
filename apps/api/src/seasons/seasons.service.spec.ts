@@ -14,7 +14,8 @@ function makePrisma(): MockPrisma {
   };
 }
 
-const SEASON = { id: "season-1", name: "UEFA Champions League 2026/27", year: 2026, isActive: true };
+const UCL_COMPETITION = { slug: "ucl", name: "UEFA Champions League", structure: "GROUP_AND_KNOCKOUT", matchdayCount: 17 };
+const SEASON = { id: "season-1", name: "UEFA Champions League 2026/27", year: 2026, isActive: true, competition: UCL_COMPETITION };
 
 describe("SeasonsService", () => {
   let prisma: MockPrisma;
@@ -62,17 +63,51 @@ describe("SeasonsService", () => {
   });
 
   describe("getAll", () => {
-    it("includes inactive seasons, ordered by year descending", async () => {
-      const historical = { id: "season-2", name: "UEFA Champions League 2025/26 (Test Data)", year: 2025, isActive: false };
+    it("includes inactive seasons, ordered by year descending, each with its competition", async () => {
+      const historical = {
+        id: "season-2",
+        name: "UEFA Champions League 2025/26 (Test Data)",
+        year: 2025,
+        isActive: false,
+        competition: UCL_COMPETITION,
+      };
       prisma.season.findMany.mockResolvedValue([SEASON, historical]);
 
       const result = await service.getAll();
 
-      expect(prisma.season.findMany).toHaveBeenCalledWith({ orderBy: { year: "desc" } });
+      expect(prisma.season.findMany).toHaveBeenCalledWith({
+        orderBy: { year: "desc" },
+        include: { competition: true },
+      });
       expect(result).toEqual([
-        { id: SEASON.id, name: SEASON.name, year: SEASON.year, isActive: true },
-        { id: historical.id, name: historical.name, year: historical.year, isActive: false },
+        { id: SEASON.id, name: SEASON.name, year: SEASON.year, isActive: true, competition: UCL_COMPETITION },
+        { id: historical.id, name: historical.name, year: historical.year, isActive: false, competition: UCL_COMPETITION },
       ]);
+    });
+  });
+
+  describe("getActive", () => {
+    it("throws NotFoundException when there's no active season", async () => {
+      prisma.season.findFirst.mockResolvedValue(null);
+      await expect(service.getActive()).rejects.toThrow(NotFoundException);
+    });
+
+    it("returns the active season with its competition nested", async () => {
+      prisma.season.findFirst.mockResolvedValue(SEASON);
+
+      const result = await service.getActive();
+
+      expect(prisma.season.findFirst).toHaveBeenCalledWith({
+        where: { isActive: true },
+        include: { competition: true },
+      });
+      expect(result).toEqual({
+        id: SEASON.id,
+        name: SEASON.name,
+        year: SEASON.year,
+        isActive: true,
+        competition: UCL_COMPETITION,
+      });
     });
   });
 });

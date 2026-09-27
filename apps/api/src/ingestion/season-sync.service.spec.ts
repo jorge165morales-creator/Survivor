@@ -200,6 +200,37 @@ describe("SeasonSyncService.syncActiveSeasons", () => {
     expect(prisma.season.findMany).toHaveBeenCalledWith({ where: { isActive: true }, include: { competition: true } });
   });
 
+  it("passes the season's competition structure through to the round mapping", async () => {
+    const matchdayFindUnique = jest.fn().mockResolvedValue({ id: "md-1", lockAt: new Date(0) });
+    const prisma = {
+      season: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: "active-1", year: 2026, isActive: true, competition: { slug: "la-liga", highlightlyLeagueId: "119924", structure: "ROUND_ROBIN" } },
+        ]),
+      },
+      matchday: { findUnique: matchdayFindUnique, update: jest.fn() },
+      team: {
+        findUnique: jest.fn().mockResolvedValue({ id: "home-uuid" }),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: "new-team-id" }),
+      },
+    } as unknown as PrismaService;
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = {
+      getFixtures: jest.fn().mockResolvedValue([fixture({ round: "Regular Season - 1" })]),
+      getLiveResults: jest.fn(),
+    } as unknown as SportsDataProvider;
+    const service = new SeasonSyncService(prisma, ingestion, provider);
+
+    const summaries = await service.syncActiveSeasons();
+
+    // A "Regular Season - 1" fixture only maps to a matchday under
+    // ROUND_ROBIN grouping (see round-mapping.spec.ts) — one matchday
+    // synced confirms the season's actual structure was used, not the
+    // GROUP_AND_KNOCKOUT default.
+    expect(summaries).toEqual([{ seasonId: "active-1", matchdaysUpdated: 1, fixturesSynced: 1 }]);
+  });
+
   it("skips a season whose competition has no highlightlyLeagueId configured", async () => {
     const prisma = {
       season: {

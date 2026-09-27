@@ -3,6 +3,7 @@ import { GameEngineModule } from "../game-engine/game-engine.module";
 import { IngestionService } from "./ingestion.service";
 import { IngestionSchedulerService } from "./ingestion-scheduler.service";
 import { SeasonSyncService } from "./season-sync.service";
+import { CompetitionProvisioningService } from "./competition-provisioning.service";
 import { PracticeSeasonService } from "./practice-season.service";
 import { PracticeReplayScheduler } from "./practice-replay-scheduler.service";
 import { ApiFootballProvider } from "./providers/api-football.provider";
@@ -16,6 +17,7 @@ import { SPORTS_DATA_PROVIDER } from "./providers/sports-data.provider.interface
     IngestionService,
     IngestionSchedulerService,
     SeasonSyncService,
+    CompetitionProvisioningService,
     PracticeSeasonService,
     PracticeReplayScheduler,
     FootballDataOrgProvider,
@@ -27,6 +29,6 @@ import { SPORTS_DATA_PROVIDER } from "./providers/sports-data.provider.interface
     // filtering in getLiveResults).
     { provide: SPORTS_DATA_PROVIDER, useClass: HighlightlyProvider },
   ],
-  exports: [IngestionService, SeasonSyncService, PracticeSeasonService, SPORTS_DATA_PROVIDER],
+  exports: [IngestionService, SeasonSyncService, CompetitionProvisioningService, PracticeSeasonService, SPORTS_DATA_PROVIDER],
 })
 export class IngestionModule {}

@@ -43,7 +43,13 @@ function makeRecompute() {
   return { recomputeLeague: jest.fn().mockResolvedValue(undefined) };
 }
 
-const SEASON = { id: "season-1", name: "UEFA Champions League 2026/27", year: 2026 };
+const SEASON = {
+  id: "season-1",
+  name: "UEFA Champions League 2026/27",
+  year: 2026,
+  isActive: true,
+  competition: { slug: "ucl", name: "UEFA Champions League", structure: "GROUP_AND_KNOCKOUT", matchdayCount: 17 },
+};
 
 describe("LeaguesService", () => {
   let prisma: MockPrisma;

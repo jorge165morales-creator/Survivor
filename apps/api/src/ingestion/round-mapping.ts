@@ -1,4 +1,4 @@
-import type { MatchdayType } from "@prisma/client";
+import type { CompetitionStructure, MatchdayType } from "@prisma/client";
 import type { ProviderFixture } from "./providers/sports-data.provider.interface";
 
 export interface MatchdayGroup {
@@ -17,6 +17,13 @@ export interface MatchdayGroup {
 // part of the pool's 17 matchdays, so it's deliberately left unmapped.
 const LEAGUE_STAGE_RE = /^League Stage - (\d+)$/;
 
+// Confirmed live against Highlightly for both La Liga (leagueId=119924) and
+// the English Premier League (leagueId=33973), 2026 season: every round is
+// "Regular Season - N", 1-indexed, with no separate knockout stage at all —
+// unlike the Champions League's format, sequence maps directly to matchday
+// number for the whole 38-round season.
+const REGULAR_SEASON_RE = /^Regular Season - (\d+)$/;
+
 const KNOCKOUT_ROUNDS: { providerRound: string; legOneSequence: number; label: string }[] = [
   { providerRound: "Knockout Round Play-offs", legOneSequence: 9, label: "Knockout Play-offs" },
   { providerRound: "Round of 16", legOneSequence: 11, label: "Round of 16" },
@@ -34,22 +41,29 @@ const FINAL_SEQUENCE = 17;
 const LEG_GAP_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
- * Groups a flat list of provider fixtures into our 17-matchday shape,
- * matched by sequence against the matchdays prisma/seed.ts already creates.
- * Pure and DB-free by design — season-sync.service.ts is the only caller,
- * and it's what actually persists anything.
+ * Groups a flat list of provider fixtures into matchdays, matched by
+ * sequence against the matchdays prisma/seed.ts (or
+ * competition-provisioning.service.ts, for a newly-added competition)
+ * already creates. Pure and DB-free by design —
+ * season-sync.service.ts is the only caller, and it's what actually
+ * persists anything.
+ *
+ * Dispatches on the season's competition structure since providers label
+ * rounds completely differently between the two shapes — see
+ * groupGroupAndKnockoutFixtures and groupRoundRobinFixtures below. Defaults
+ * to GROUP_AND_KNOCKOUT so practice-season.service.ts (always a Champions
+ * League replay) and existing tests don't need to pass it explicitly.
  */
-export function groupProviderFixturesIntoMatchdays(fixtures: ProviderFixture[]): MatchdayGroup[] {
-  const byRound = new Map<string, ProviderFixture[]>();
-  for (const fixture of fixtures) {
-    const list = byRound.get(fixture.round);
-    if (list) {
-      list.push(fixture);
-    } else {
-      byRound.set(fixture.round, [fixture]);
-    }
-  }
+export function groupProviderFixturesIntoMatchdays(
+  fixtures: ProviderFixture[],
+  structure: CompetitionStructure = "GROUP_AND_KNOCKOUT",
+): MatchdayGroup[] {
+  return structure === "ROUND_ROBIN" ? groupRoundRobinFixtures(fixtures) : groupGroupAndKnockoutFixtures(fixtures);
+}
 
+/** Champions League-shaped format: a league phase followed by two-legged knockout rounds. */
+function groupGroupAndKnockoutFixtures(fixtures: ProviderFixture[]): MatchdayGroup[] {
+  const byRound = groupByRound(fixtures);
   const groups: MatchdayGroup[] = [];
 
   for (const [round, roundFixtures] of byRound) {
@@ -93,6 +107,39 @@ export function groupProviderFixturesIntoMatchdays(fixtures: ProviderFixture[]):
   }
 
   return groups.sort((a, b) => a.sequence - b.sequence);
+}
+
+/**
+ * Plain round-robin format (La Liga, Premier League): every round is one
+ * matchday, no knockout stage at all, so this is a straight relabel with no
+ * leg-splitting or qualifying-round filtering needed.
+ */
+function groupRoundRobinFixtures(fixtures: ProviderFixture[]): MatchdayGroup[] {
+  const byRound = groupByRound(fixtures);
+  const groups: MatchdayGroup[] = [];
+
+  for (const [round, roundFixtures] of byRound) {
+    const match = round.match(REGULAR_SEASON_RE);
+    if (!match) continue; // e.g. cup competitions folded into the same provider league — not part of the pool
+
+    const sequence = Number(match[1]);
+    groups.push({ sequence, type: "GROUP", roundLabel: `Matchday ${sequence}`, fixtures: roundFixtures });
+  }
+
+  return groups.sort((a, b) => a.sequence - b.sequence);
+}
+
+function groupByRound(fixtures: ProviderFixture[]): Map<string, ProviderFixture[]> {
+  const byRound = new Map<string, ProviderFixture[]>();
+  for (const fixture of fixtures) {
+    const list = byRound.get(fixture.round);
+    if (list) {
+      list.push(fixture);
+    } else {
+      byRound.set(fixture.round, [fixture]);
+    }
+  }
+  return byRound;
 }
 
 /**

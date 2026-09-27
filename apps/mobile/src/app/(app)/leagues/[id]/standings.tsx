@@ -3,14 +3,14 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { StandingsGridCell, StandingsGridMatchday, StandingsGridRow } from '@survivor/shared-types';
+import type { CompetitionSummary, StandingsGridCell, StandingsGridMatchday, StandingsGridRow } from '@survivor/shared-types';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, MaxContentWidth } from '@/constants/theme';
 import { leaguesApi, standingsApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
-import { goBackOrHome } from '@/utils/navigation';
+import { goBackOrHome, pushRulesFor } from '@/utils/navigation';
 import { confirmAsync, notify } from '@/utils/alerts';
 import { useLocale } from '@/i18n/locale';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,7 +31,7 @@ const ROUND_ABBREVIATIONS: Record<string, string> = {
 /** Squeezes a matchday's full roundLabel ("League Phase Matchday 3",
  * "Round of 16 — Leg 2") down to something that fits a ~60px column header. */
 function shortMatchdayLabel(matchday: StandingsGridMatchday): string {
-  const groupMatch = matchday.roundLabel.match(/^League Phase Matchday (\d+)$/);
+  const groupMatch = matchday.roundLabel.match(/^(?:League Phase )?Matchday (\d+)$/);
   if (groupMatch) return `MD${groupMatch[1]}`;
 
   const legMatch = matchday.roundLabel.match(/^(.+?) — Leg (\d)$/);
@@ -50,6 +50,7 @@ export default function StandingsScreen() {
   const [rows, setRows] = useState<StandingsGridRow[] | null>(null);
   const [isCommissioner, setIsCommissioner] = useState(false);
   const [buyBackEnabled, setBuyBackEnabled] = useState(false);
+  const [competition, setCompetition] = useState<CompetitionSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [grantingUserId, setGrantingUserId] = useState<string | null>(null);
   const [selected, setSelected] = useState<{
@@ -67,6 +68,7 @@ export default function StandingsScreen() {
         setRows(grid.rows);
         setIsCommissioner(league.commissionerId === session.user.id);
         setBuyBackEnabled(league.buyBackEnabled);
+        setCompetition(league.season.competition);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : t.standings.couldNotLoad));
   }, [session, id, t]);
@@ -184,7 +186,7 @@ export default function StandingsScreen() {
           </>
         )}
 
-        <Pressable onPress={() => router.push('/rules')} style={styles.rulesButton}>
+        <Pressable onPress={() => (competition ? pushRulesFor(competition) : router.push('/rules'))} style={styles.rulesButton}>
           <ThemedText type="linkPrimary">{t.leagueDetail.rules}</ThemedText>
         </Pressable>
 

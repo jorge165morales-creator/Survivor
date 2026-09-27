@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import type { CompetitionStructure } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestionService } from "./ingestion.service";
 import { groupProviderFixturesIntoMatchdays } from "./round-mapping";
@@ -16,7 +17,9 @@ export interface SeasonSyncSummary {
  * Pulls the full competition schedule for a season from the sports-data
  * provider and reconciles it into our schema: derives each matchday's
  * lockAt from its fixtures' real kickoff times (see round-mapping.ts for how
- * provider rounds map to our pre-seeded 17 matchdays), and resolves/creates
+ * provider rounds map to a season's pre-seeded matchdays, which vary in
+ * count and shape by competition — 17 for the Champions League's
+ * group-and-knockout format, 38 for a round robin), and resolves/creates
  * the Team rows each fixture references.
  *
  * Deliberately only ever touches the *active* season — the historical test
@@ -51,7 +54,7 @@ export class SeasonSyncService {
           summaries.push({ seasonId: season.id, matchdaysUpdated: 0, fixturesSynced: 0, error: "No provider id configured" });
           continue;
         }
-        summaries.push(await this.syncSeason(season.id, competitionExternalId, season.year));
+        summaries.push(await this.syncSeason(season.id, competitionExternalId, season.year, season.competition.structure));
       } catch (err) {
         this.logger.error(`Season sync failed for ${season.id}`, err instanceof Error ? err.stack : err);
         summaries.push({
@@ -65,9 +68,14 @@ export class SeasonSyncService {
     return summaries;
   }
 
-  async syncSeason(seasonId: string, competitionExternalId: string, seasonYear: number): Promise<SeasonSyncSummary> {
+  async syncSeason(
+    seasonId: string,
+    competitionExternalId: string,
+    seasonYear: number,
+    structure: CompetitionStructure = "GROUP_AND_KNOCKOUT",
+  ): Promise<SeasonSyncSummary> {
     const providerFixtures = await this.provider.getFixtures(competitionExternalId, seasonYear);
-    const groups = groupProviderFixturesIntoMatchdays(providerFixtures);
+    const groups = groupProviderFixturesIntoMatchdays(providerFixtures, structure);
 
     let matchdaysUpdated = 0;
     let fixturesSynced = 0;
@@ -77,9 +85,10 @@ export class SeasonSyncService {
         where: { seasonId_sequence: { seasonId, sequence: group.sequence } },
       });
       if (!matchday) {
-        // Shouldn't happen once prisma/seed.ts has run — all 17 matchdays for
-        // an active season are pre-created. Logged and skipped rather than
-        // thrown so one bad sequence doesn't abort the rest of the sync.
+        // Shouldn't happen once the season's matchdays have been pre-created
+        // (one per Competition.matchdayCount — see seasons.service.ts /
+        // prisma/seed.ts). Logged and skipped rather than thrown so one bad
+        // sequence doesn't abort the rest of the sync.
         this.logger.warn(`No matchday at sequence ${group.sequence} for season ${seasonId} — skipping`);
         continue;
       }

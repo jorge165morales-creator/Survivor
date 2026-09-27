@@ -14,6 +14,7 @@ import type {
 import { PrismaService } from "../prisma/prisma.service";
 import { RecomputeService } from "../game-engine/recompute.service";
 import { generateInviteCode } from "./invite-code";
+import { toSeasonSummary } from "../seasons/seasons.service";
 
 const ACTIVE_MEMBER_FILTER = { status: { not: MembershipStatus.LEFT } };
 
@@ -56,7 +57,7 @@ export class LeaguesService {
               create: { userId, status: MembershipStatus.ACTIVE, hasPaid: true, paidAt: new Date() },
             },
           },
-          include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
+          include: { season: { include: { competition: true } }, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
         });
 
         return this.toSummary(league, MembershipStatus.ACTIVE);
@@ -75,7 +76,7 @@ export class LeaguesService {
       where: { userId, ...ACTIVE_MEMBER_FILTER, league: { archivedAt: null } },
       include: {
         league: {
-          include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
+          include: { season: { include: { competition: true } }, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
         },
       },
       orderBy: { joinedAt: "desc" },
@@ -108,7 +109,7 @@ export class LeaguesService {
     const league = await this.prisma.league.findUnique({
       where: { id: leagueId },
       include: {
-        season: true,
+        season: { include: { competition: true } },
         memberships: {
           where: ACTIVE_MEMBER_FILTER,
           include: { user: true },
@@ -130,12 +131,7 @@ export class LeaguesService {
       inviteCode: league.inviteCode,
       maxMembers: league.maxMembers,
       createdAt: league.createdAt.toISOString(),
-      season: {
-        id: league.season.id,
-        name: league.season.name,
-        year: league.season.year,
-        isActive: league.season.isActive,
-      },
+      season: toSeasonSummary(league.season),
       commissionerId: league.commissionerId,
       buyBackEnabled: league.buyBackEnabled,
       paymentRequired: league.paymentRequired,
@@ -402,7 +398,7 @@ export class LeaguesService {
   private async getSummaryFor(leagueId: string, userId: string): Promise<LeagueSummary> {
     const league = await this.prisma.league.findUniqueOrThrow({
       where: { id: leagueId },
-      include: { season: true, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
+      include: { season: { include: { competition: true } }, _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
     });
     const membership = await this.prisma.leagueMembership.findUniqueOrThrow({
       where: { leagueId_userId: { leagueId, userId } },
@@ -419,7 +415,7 @@ export class LeaguesService {
       commissionerId: string;
       buyBackEnabled: boolean;
       paymentRequired: boolean;
-      season: { id: string; name: string; year: number; isActive: boolean };
+      season: Parameters<typeof toSeasonSummary>[0];
       _count: { memberships: number };
     },
     myStatus: MembershipStatus,
@@ -433,12 +429,7 @@ export class LeaguesService {
       commissionerId: league.commissionerId,
       buyBackEnabled: league.buyBackEnabled,
       paymentRequired: league.paymentRequired,
-      season: {
-        id: league.season.id,
-        name: league.season.name,
-        year: league.season.year,
-        isActive: league.season.isActive,
-      },
+      season: toSeasonSummary(league.season),
       myStatus,
     };
   }

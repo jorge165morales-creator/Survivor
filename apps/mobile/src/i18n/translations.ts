@@ -195,28 +195,38 @@ export const en = {
   },
   rules: {
     title: 'Rules',
-    items: [
-      {
-        title: 'Survive each matchday',
-        body: "Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The tournament runs 17 matchdays — 8 group stage, 8 play-offs, and 1 final. See how many you can survive!",
-      },
-      {
-        title: 'Missing a pick eliminates you',
-        body: "If a matchday locks and you never submitted a pick, you are eliminated — the same as if your pick had lost.\n\nTip: You can populate future matches from the beginning and change them later as the tournament moves. If you forget you will still have a pick!",
-      },
-      {
-        title: 'Knockout legs are scored one at a time',
-        body: "Each leg of a two-legged knockout tie is its own matchday, judged only by that match's final score — extra time included, penalty shootout not. Aggregate score, away goals, and who advances don't matter.\n\n• You pick Bayern for the second leg. Bayern lose 1–2 but go through on aggregate and win the shootout — you're still eliminated.\n• 1–1 after 90 minutes, then your team concedes in extra time to lose 1–2 — that's a loss, extra-time goals count.\n• 1–1 after extra time, your team wins on penalties — counts as a draw, you survive.\n• Your team loses the first leg 0–1, then wins the second leg 3–0 on a later matchday — the first-leg pick was already an elimination.",
-      },
-      {
-        title: 'Buy-back (if enabled by your admin)',
-        body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
-      },
-      {
-        title: 'Tie-break: buy-back used',
-        body: 'If two members are tied (eliminated on the same matchday, or both still alive at the end), the member who has NOT used a buy-back ranks above the one who has.',
-      },
-    ],
+    competitionPickerLabel: 'Show rules for:',
+    // Two different opening rules depending on the competition's format
+    // (see [[CompetitionSummary]] in shared-types) — everything else below
+    // is shared regardless of format. The Rules screen picks whichever one
+    // applies and slots it in first.
+    groupAndKnockoutIntro: {
+      title: 'Survive each matchday',
+      body: "Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The tournament runs 17 matchdays — 8 group stage, 8 play-offs, and 1 final. See how many you can survive!",
+    },
+    roundRobinIntro: {
+      title: 'Survive each matchday',
+      body: (matchdayCount: number) =>
+        `Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The season runs ${matchdayCount} matchdays, one per week — see how many you can survive!`,
+    },
+    missingPick: {
+      title: 'Missing a pick eliminates you',
+      body: "If a matchday locks and you never submitted a pick, you are eliminated — the same as if your pick had lost.\n\nTip: You can populate future matches from the beginning and change them later as the tournament moves. If you forget you will still have a pick!",
+    },
+    // Group-and-knockout competitions only — a round robin has no
+    // two-legged ties, so this doesn't apply there.
+    knockoutLegs: {
+      title: 'Knockout legs are scored one at a time',
+      body: "Each leg of a two-legged knockout tie is its own matchday, judged only by that match's final score — extra time included, penalty shootout not. Aggregate score, away goals, and who advances don't matter.\n\n• You pick Bayern for the second leg. Bayern lose 1–2 but go through on aggregate and win the shootout — you're still eliminated.\n• 1–1 after 90 minutes, then your team concedes in extra time to lose 1–2 — that's a loss, extra-time goals count.\n• 1–1 after extra time, your team wins on penalties — counts as a draw, you survive.\n• Your team loses the first leg 0–1, then wins the second leg 3–0 on a later matchday — the first-leg pick was already an elimination.",
+    },
+    buyBack: {
+      title: 'Buy-back (if enabled by your admin)',
+      body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
+    },
+    tieBreak: {
+      title: 'Tie-break: buy-back used',
+      body: 'If two members are tied (eliminated on the same matchday, or both still alive at the end), the member who has NOT used a buy-back ranks above the one who has.',
+    },
   },
 };
 
@@ -414,28 +424,32 @@ export const es: typeof en = {
   },
   rules: {
     title: 'Reglas',
-    items: [
-      {
-        title: 'Sobrevive cada jornada',
-        body: 'Cada jornada, elige un equipo que creas que no perderá. Una derrota te elimina — un empate te mantiene con vida. Una vez que elijas un equipo, no podrás volver a elegirlo el resto de la temporada, y si te quedas sin equipos para elegir, también quedas eliminado. El torneo consta de 17 jornadas — 8 de fase de grupos, 8 de eliminatorias y 1 final. ¡Descubre cuántas puedes sobrevivir!',
-      },
-      {
-        title: 'No elegir te elimina',
-        body: 'Si una jornada se bloquea y nunca enviaste una selección, quedas eliminado — igual que si tu selección hubiera perdido.\n\nConsejo: puedes elegir tus selecciones para partidos futuros desde el principio y cambiarlas más adelante a medida que avanza el torneo. Si se te olvida, ¡igual tendrás una selección hecha!',
-      },
-      {
-        title: 'Las eliminatorias se puntúan partido por partido',
-        body: 'Cada partido de una eliminatoria a doble partido es su propia jornada, y se juzga solo por el marcador final de ese partido — con prórroga, pero sin la tanda de penales. El marcador global, los goles de visitante y quién avanza no influyen.\n\n• Eliges Bayern para la vuelta. El Bayern pierde 1–2 pero avanza en el global y gana la tanda — quedas eliminado igualmente.\n• 1–1 tras 90 minutos y tu equipo encaja en la prórroga para perder 1–2 — es una derrota, los goles de la prórroga cuentan.\n• 1–1 tras la prórroga y tu equipo gana en los penales — cuenta como empate, sobrevives.\n• Tu equipo pierde la ida 0–1 y luego gana la vuelta 3–0 en una jornada posterior — la selección de la ida ya fue una eliminación.',
-      },
-      {
-        title: 'Recompra (si tu admin la habilita)',
-        body: 'Un admin puede otorgarle a un miembro eliminado un único reingreso por temporada. El equipo ya usado en la derrota sigue contando como usado.',
-      },
-      {
-        title: 'Desempate: recompra usada',
-        body: 'Si dos miembros empatan (eliminados en la misma jornada, o ambos vivos al final), el miembro que NO haya usado una recompra queda por encima del que sí la usó.',
-      },
-    ],
+    competitionPickerLabel: 'Mostrar reglas de:',
+    groupAndKnockoutIntro: {
+      title: 'Sobrevive cada jornada',
+      body: 'Cada jornada, elige un equipo que creas que no perderá. Una derrota te elimina — un empate te mantiene con vida. Una vez que elijas un equipo, no podrás volver a elegirlo el resto de la temporada, y si te quedas sin equipos para elegir, también quedas eliminado. El torneo consta de 17 jornadas — 8 de fase de grupos, 8 de eliminatorias y 1 final. ¡Descubre cuántas puedes sobrevivir!',
+    },
+    roundRobinIntro: {
+      title: 'Sobrevive cada jornada',
+      body: (matchdayCount: number) =>
+        `Cada jornada, elige un equipo que creas que no perderá. Una derrota te elimina — un empate te mantiene con vida. Una vez que elijas un equipo, no podrás volver a elegirlo el resto de la temporada, y si te quedas sin equipos para elegir, también quedas eliminado. La temporada consta de ${matchdayCount} jornadas, una por semana — ¡descubre cuántas puedes sobrevivir!`,
+    },
+    missingPick: {
+      title: 'No elegir te elimina',
+      body: 'Si una jornada se bloquea y nunca enviaste una selección, quedas eliminado — igual que si tu selección hubiera perdido.\n\nConsejo: puedes elegir tus selecciones para partidos futuros desde el principio y cambiarlas más adelante a medida que avanza el torneo. Si se te olvida, ¡igual tendrás una selección hecha!',
+    },
+    knockoutLegs: {
+      title: 'Las eliminatorias se puntúan partido por partido',
+      body: 'Cada partido de una eliminatoria a doble partido es su propia jornada, y se juzga solo por el marcador final de ese partido — con prórroga, pero sin la tanda de penales. El marcador global, los goles de visitante y quién avanza no influyen.\n\n• Eliges Bayern para la vuelta. El Bayern pierde 1–2 pero avanza en el global y gana la tanda — quedas eliminado igualmente.\n• 1–1 tras 90 minutos y tu equipo encaja en la prórroga para perder 1–2 — es una derrota, los goles de la prórroga cuentan.\n• 1–1 tras la prórroga y tu equipo gana en los penales — cuenta como empate, sobrevives.\n• Tu equipo pierde la ida 0–1 y luego gana la vuelta 3–0 en una jornada posterior — la selección de la ida ya fue una eliminación.',
+    },
+    buyBack: {
+      title: 'Recompra (si tu admin la habilita)',
+      body: 'Un admin puede otorgarle a un miembro eliminado un único reingreso por temporada. El equipo ya usado en la derrota sigue contando como usado.',
+    },
+    tieBreak: {
+      title: 'Desempate: recompra usada',
+      body: 'Si dos miembros empatan (eliminados en la misma jornada, o ambos vivos al final), el miembro que NO haya usado una recompra queda por encima del que sí la usó.',
+    },
   },
 };
 

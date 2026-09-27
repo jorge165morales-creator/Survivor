@@ -30,11 +30,24 @@ export interface AuthTokensResponse {
   user: AuthUser;
 }
 
+export type CompetitionStructure = "GROUP_AND_KNOCKOUT" | "ROUND_ROBIN";
+
+/** Nested on SeasonSummary — lets clients (e.g. the Rules screen) render
+ * competition-appropriate copy instead of assuming the Champions League's
+ * shape (17 matchdays, group stage + knockouts) always applies. */
+export interface CompetitionSummary {
+  slug: string;
+  name: string;
+  structure: CompetitionStructure;
+  matchdayCount: number;
+}
+
 export interface SeasonSummary {
   id: string;
   name: string;
   year: number;
   isActive: boolean;
+  competition: CompetitionSummary;
 }
 
 /** Response entry for GET /seasons/:seasonId/matchdays */

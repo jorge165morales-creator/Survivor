@@ -117,3 +117,45 @@ describe("groupProviderFixturesIntoMatchdays", () => {
     expect(groups.map((g) => g.sequence)).toEqual([1, 2, 17]);
   });
 });
+
+describe("groupProviderFixturesIntoMatchdays (ROUND_ROBIN)", () => {
+  beforeEach(() => {
+    fixtureCounter = 0;
+  });
+
+  it("maps each 'Regular Season - N' round to its own GROUP matchday, no leg-splitting or qualifying filter", () => {
+    const fixtures = [
+      fixture("Regular Season - 1", "2026-08-15T18:00:00Z"),
+      fixture("Regular Season - 1", "2026-08-16T15:00:00Z"),
+      fixture("Regular Season - 12", "2026-11-07T20:00:00Z"),
+    ];
+
+    const groups = groupProviderFixturesIntoMatchdays(fixtures, "ROUND_ROBIN");
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({ sequence: 1, type: "GROUP", roundLabel: "Matchday 1" });
+    expect(groups[0].fixtures).toHaveLength(2);
+    expect(groups[1]).toMatchObject({ sequence: 12, type: "GROUP", roundLabel: "Matchday 12" });
+  });
+
+  it("ignores rounds that don't match the Regular Season pattern (e.g. a cup competition sharing the same provider league)", () => {
+    const fixtures = [fixture("Community Shield", "2026-08-03T15:00:00Z")];
+    expect(groupProviderFixturesIntoMatchdays(fixtures, "ROUND_ROBIN")).toEqual([]);
+  });
+
+  it("returns round-robin matchdays sorted by sequence regardless of input order", () => {
+    const fixtures = [
+      fixture("Regular Season - 3", "2026-09-01T18:00:00Z"),
+      fixture("Regular Season - 1", "2026-08-15T18:00:00Z"),
+      fixture("Regular Season - 2", "2026-08-22T18:00:00Z"),
+    ];
+
+    const groups = groupProviderFixturesIntoMatchdays(fixtures, "ROUND_ROBIN");
+    expect(groups.map((g) => g.sequence)).toEqual([1, 2, 3]);
+  });
+
+  it("defaults to GROUP_AND_KNOCKOUT behavior when no structure is given", () => {
+    const groups = groupProviderFixturesIntoMatchdays([fixture("Regular Season - 1", "2026-08-15T18:00:00Z")]);
+    expect(groups).toEqual([]); // "Regular Season - 1" isn't a recognized GROUP_AND_KNOCKOUT round label
+  });
+});

@@ -60,14 +60,17 @@ function shortNameFor(name: string): string {
   return name.length <= 12 ? name : name.split(" ")[0];
 }
 
-interface MatchdaySeed {
+export interface MatchdaySeed {
   sequence: number;
   type: MatchdayType;
   roundLabel: string;
   lockAt: Date;
 }
 
-function buildMatchdayCalendar(): MatchdaySeed[] {
+// Exported for competition-provisioning.service.ts, which reuses this exact
+// shape when provisioning a brand-new season for a GROUP_AND_KNOCKOUT
+// competition (currently only ever the Champions League).
+export function buildMatchdayCalendar(): MatchdaySeed[] {
   // Illustrative dates only — real kickoff times come from live ingestion
   // (Phase 3). Group phase roughly every 2 weeks, knockout rounds monthly.
   const base = new Date("2026-09-16T18:45:00Z");

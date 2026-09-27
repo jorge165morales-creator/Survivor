@@ -9,6 +9,7 @@ import { AdminPracticeLeagueController } from "./admin-practice-league.controlle
 import { AdminTeamsController } from "./admin-teams.controller";
 import { AdminTeamsService } from "./admin-teams.service";
 import { AdminLeaguesController } from "./admin-leagues.controller";
+import { AdminCompetitionsController } from "./admin-competitions.controller";
 
 @Module({
   imports: [GameEngineModule, IngestionModule, LeaguesModule],
@@ -18,6 +19,7 @@ import { AdminLeaguesController } from "./admin-leagues.controller";
     AdminPracticeLeagueController,
     AdminTeamsController,
     AdminLeaguesController,
+    AdminCompetitionsController,
   ],
   providers: [AdminFixturesService, AdminTeamsService],
 })
