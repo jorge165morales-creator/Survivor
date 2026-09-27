@@ -92,7 +92,10 @@ export class LeaguesService {
   // the league from listMine() and blocks new joins without touching any
   // other member's picks/membership rows, and it's reversible if needed.
   async archive(leagueId: string, userId: string): Promise<void> {
-    const league = await this.prisma.league.findUnique({ where: { id: leagueId } });
+    const league = await this.prisma.league.findUnique({
+      where: { id: leagueId },
+      include: { _count: { select: { memberships: { where: ACTIVE_MEMBER_FILTER } } } },
+    });
     if (!league) {
       throw new NotFoundException("League not found");
     }
@@ -101,6 +104,16 @@ export class LeaguesService {
     }
     if (league.archivedAt) {
       return;
+    }
+    // Once anyone besides the commissioner has joined, deleting would yank
+    // the league out from under them with no undo path exposed anywhere —
+    // only a still-solo league (commissioner is the only active member) can
+    // be deleted. A commissioner who wants out of a populated league should
+    // transfer it instead (not yet built — see leave()'s error message).
+    if (league._count.memberships > 1) {
+      throw new ForbiddenException(
+        "This league has other members and can no longer be deleted. Remove members first, or transfer the league instead.",
+      );
     }
     await this.prisma.league.update({ where: { id: leagueId }, data: { archivedAt: new Date() } });
   }

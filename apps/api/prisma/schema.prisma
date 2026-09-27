@@ -308,11 +308,19 @@ model UsedTeam {
   userId       String
   teamId       String
   team         Team     @relation(fields: [teamId], references: [id])
+  // Which "cycle" (see game-engine/team-cycle.ts) this use falls in —
+  // teamCount-sized blocks of matchday sequence, e.g. matchdays 1-20 = cycle
+  // 0, 21-38 = cycle 1, for a 20-team round robin. Lets the same team be
+  // used again once a new cycle starts, rather than forcing elimination by
+  // roster exhaustion partway through a season with more matchdays than
+  // teams. Always 0 for a competition that never plays through its full
+  // roster twice (e.g. the Champions League).
+  cycleIndex   Int      @default(0)
   usedInPickId String   @unique
   usedInPick   Pick     @relation(fields: [usedInPickId], references: [id])
   createdAt    DateTime @default(now())
 
-  @@unique([leagueId, userId, teamId])
+  @@unique([leagueId, userId, teamId, cycleIndex])
   @@index([leagueId, userId])
 }
 

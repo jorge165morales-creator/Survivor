@@ -208,6 +208,10 @@ export const leaguesApi = {
   inviteLink: (id: string, accessToken: string) =>
     post<InviteLinkResponse>(`/leagues/${id}/invite-link`, {}, accessToken),
   leave: (id: string, accessToken: string) => del(`/leagues/${id}/members/me`, accessToken),
+  // Only succeeds while the commissioner is still the league's only active
+  // member — see leagues.service.ts's archive(). Soft-delete (archivedAt),
+  // not reversible from the app.
+  delete: (id: string, accessToken: string) => del(`/leagues/${id}`, accessToken),
   grantBuyBack: (id: string, userId: string, accessToken: string) =>
     post<LeagueSummary>(`/leagues/${id}/members/${userId}/grant-buy-back`, {}, accessToken),
   // Retryable: markMemberPaid just sets hasPaid to an exact boolean and only

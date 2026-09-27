@@ -110,10 +110,8 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   languageRow: {
-    position: 'absolute',
-    top: Spacing.three,
-    right: Spacing.four,
-    zIndex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three },

@@ -252,7 +252,7 @@ describe("LeaguesService", () => {
   });
 
   describe("archive", () => {
-    const league = { id: "league-1", commissionerId: "commish", archivedAt: null };
+    const league = { id: "league-1", commissionerId: "commish", archivedAt: null, _count: { memberships: 1 } };
 
     it("rejects an unknown league", async () => {
       prisma.league.findUnique.mockResolvedValue(null);
@@ -264,7 +264,7 @@ describe("LeaguesService", () => {
       await expect(service.archive("league-1", "user-2")).rejects.toThrow(ForbiddenException);
     });
 
-    it("sets archivedAt for the commissioner", async () => {
+    it("sets archivedAt for the commissioner when they're still the only member", async () => {
       prisma.league.findUnique.mockResolvedValue(league);
       await service.archive("league-1", "commish");
       expect(prisma.league.update).toHaveBeenCalledWith({
@@ -276,6 +276,12 @@ describe("LeaguesService", () => {
     it("is a no-op when already archived", async () => {
       prisma.league.findUnique.mockResolvedValue({ ...league, archivedAt: new Date() });
       await service.archive("league-1", "commish");
+      expect(prisma.league.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects deleting a league once other members have joined", async () => {
+      prisma.league.findUnique.mockResolvedValue({ ...league, _count: { memberships: 2 } });
+      await expect(service.archive("league-1", "commish")).rejects.toThrow(ForbiddenException);
       expect(prisma.league.update).not.toHaveBeenCalled();
     });
   });

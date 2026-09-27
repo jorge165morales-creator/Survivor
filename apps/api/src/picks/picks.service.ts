@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import type { PickHistoryResponse, PickOptionsResponse } from "@survivor/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { validatePick, type PickRejectionReason } from "../game-engine/pick-validation.service";
+import { cycleIndexForSequence } from "../game-engine/team-cycle";
 import { RecomputeService } from "../game-engine/recompute.service";
 
 function rejectionToException(reason: PickRejectionReason): Error {
@@ -28,6 +29,16 @@ export class PicksService {
     private readonly prisma: PrismaService,
     private readonly recompute: RecomputeService,
   ) {}
+
+  // How many distinct teams a player must cycle through before a used team
+  // becomes available again — see team-cycle.ts. Queried per-season rather
+  // than read off Competition.matchdayCount (which is a matchday count, not
+  // a team count, and the two aren't always the same competition-to-
+  // competition) or cached, since this is a cheap count query and team
+  // rosters only ever change between seasons, not within one.
+  private teamCountForSeason(seasonId: string): Promise<number> {
+    return this.prisma.team.count({ where: { seasons: { some: { id: seasonId } } } });
+  }
 
   private async requireMembership(leagueId: string, userId: string) {
     const membership = await this.prisma.leagueMembership.findUnique({
@@ -50,13 +61,15 @@ export class PicksService {
       throw new NotFoundException("Matchday not found");
     }
 
-    const [usedTeams, currentPick] = await Promise.all([
+    const [usedTeams, currentPick, teamCount] = await Promise.all([
       this.prisma.usedTeam.findMany({
         where: { leagueId, userId },
-        include: { usedInPick: { select: { matchdayId: true } } },
+        include: { usedInPick: { select: { matchdayId: true, matchday: { select: { sequence: true } } } } },
       }),
       this.prisma.pick.findUnique({ where: { leagueId_userId_matchdayId: { leagueId, userId, matchdayId } } }),
+      this.teamCountForSeason(matchday.seasonId),
     ]);
+    const currentCycle = cycleIndexForSequence(matchday.sequence, teamCount);
 
     return {
       matchdayId: matchday.id,
@@ -77,6 +90,11 @@ export class PicksService {
       })),
       usedTeamIds: usedTeams
         .filter((u) => u.usedInPick.matchdayId !== matchdayId)
+        // Only teams burned within the current cycle still block a pick —
+        // see team-cycle.ts. A no-op filter for any competition that never
+        // plays enough matchdays to complete one (e.g. the 17-matchday
+        // Champions League), since every matchday is cycle 0 there.
+        .filter((u) => cycleIndexForSequence(u.usedInPick.matchday.sequence, teamCount) === currentCycle)
         .map((u) => u.teamId),
       currentPick: currentPick ? { teamId: currentPick.teamId, submittedAt: currentPick.submittedAt.toISOString() } : null,
     };
@@ -112,10 +130,18 @@ export class PicksService {
       where: { leagueId_userId_matchdayId: { leagueId, userId, matchdayId } },
     });
 
+    const teamCount = await this.teamCountForSeason(matchday.seasonId);
+    const cycleIndex = cycleIndexForSequence(matchday.sequence, teamCount);
+
+    // Scoped to the current cycle (see team-cycle.ts) — a team used in an
+    // earlier, already-completed cycle doesn't block a repeat pick. A no-op
+    // restriction for a competition that never plays enough matchdays to
+    // complete one, since cycleIndex is always 0 there.
     const usedTeamRows = await this.prisma.usedTeam.findMany({
       where: {
         leagueId,
         userId,
+        cycleIndex,
         ...(existingPick ? { NOT: { usedInPickId: existingPick.id } } : {}),
       },
     });
@@ -157,9 +183,9 @@ export class PicksService {
             });
 
         if (existingPick) {
-          await tx.usedTeam.update({ where: { usedInPickId: pick.id }, data: { teamId } });
+          await tx.usedTeam.update({ where: { usedInPickId: pick.id }, data: { teamId, cycleIndex } });
         } else {
-          await tx.usedTeam.create({ data: { leagueId, userId, teamId, usedInPickId: pick.id } });
+          await tx.usedTeam.create({ data: { leagueId, userId, teamId, cycleIndex, usedInPickId: pick.id } });
         }
 
         return pick;

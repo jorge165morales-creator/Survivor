@@ -16,6 +16,31 @@ export const en = {
     home: 'Home',
     rules: 'Rules',
   },
+  // First-launch carousel — see app/onboarding.tsx and state/onboarding.ts.
+  onboarding: {
+    skip: 'Skip',
+    next: 'Next',
+    getStarted: 'Get Started',
+    alreadyHaveAccount: 'Already have an account? Sign in',
+    slides: [
+      {
+        title: 'Pick a team each round',
+        body: "Every matchday, choose one team from the competition that you think won't lose.",
+      },
+      {
+        title: "One loss and you're out",
+        body: 'A win or draw keeps you alive. An outright loss — or missing a pick — eliminates you.',
+      },
+      {
+        title: "Can't reuse a team",
+        body: "Once you've picked a team, you can't pick it again for the rest of the season. Choose wisely!",
+      },
+      {
+        title: 'Compete with friends',
+        body: 'Create a private league, invite friends with a code, and see who survives the longest.',
+      },
+    ],
+  },
   signIn: {
     signIn: 'Sign in',
     emailPlaceholder: 'Email',
@@ -138,6 +163,13 @@ export const en = {
     leaveConfirmMessage: 'You can rejoin later with the invite code.',
     leaveConfirmLabel: 'Leave',
     couldNotLeave: 'Could not leave league',
+    // Only shown to the commissioner while they're still the league's only
+    // member — see leagues.service.ts's archive().
+    deleteLeague: 'Delete League',
+    deleteConfirmTitle: 'Delete league?',
+    deleteConfirmMessage: "This can't be undone. Only available while you're still the only member.",
+    deleteConfirmLabel: 'Delete',
+    couldNotDelete: 'Could not delete league',
   },
   pick: {
     title: 'Make Your Picks',
@@ -207,7 +239,7 @@ export const en = {
     roundRobinIntro: {
       title: 'Survive each matchday',
       body: (matchdayCount: number) =>
-        `Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. Once you've picked a team, you can't pick it again for the rest of the season, and if you run out of teams to pick, you're eliminated too. The season runs ${matchdayCount} matchdays, one per week — see how many you can survive!`,
+        `Each matchday, pick one team you think won't lose. An outright loss eliminates you — a draw keeps you alive. You can't pick the same team twice until you've used every team in the competition — once you have, the list resets (see below). The season runs ${matchdayCount} matchdays, one per week — see how many you can survive!`,
     },
     missingPick: {
       title: 'Missing a pick eliminates you',
@@ -218,6 +250,15 @@ export const en = {
     knockoutLegs: {
       title: 'Knockout legs are scored one at a time',
       body: "Each leg of a two-legged knockout tie is its own matchday, judged only by that match's final score — extra time included, penalty shootout not. Aggregate score, away goals, and who advances don't matter.\n\n• You pick Bayern for the second leg. Bayern lose 1–2 but go through on aggregate and win the shootout — you're still eliminated.\n• 1–1 after 90 minutes, then your team concedes in extra time to lose 1–2 — that's a loss, extra-time goals count.\n• 1–1 after extra time, your team wins on penalties — counts as a draw, you survive.\n• Your team loses the first leg 0–1, then wins the second leg 3–0 on a later matchday — the first-leg pick was already an elimination.",
+    },
+    // Round-robin competitions only — a season like La Liga or the Premier
+    // League runs more matchdays than there are teams, so "never repeat a
+    // team" can't hold for the whole season the way it does in a
+    // group-and-knockout competition with a much bigger roster than
+    // matchday count.
+    teamCycleReset: {
+      title: 'Run out of teams? You start fresh',
+      body: "If you use every team in the competition before the season ends, your used-teams list resets — you're free to pick any of them again. You're never eliminated just for running out of teams.",
     },
     buyBack: {
       title: 'Buy-back (if enabled by your admin)',
@@ -247,6 +288,30 @@ export const es: typeof en = {
   tabs: {
     home: 'Inicio',
     rules: 'Reglas',
+  },
+  onboarding: {
+    skip: 'Omitir',
+    next: 'Siguiente',
+    getStarted: 'Comenzar',
+    alreadyHaveAccount: '¿Ya tienes una cuenta? Inicia sesión',
+    slides: [
+      {
+        title: 'Elige un equipo cada jornada',
+        body: 'Cada jornada, elige un equipo de la competición que creas que no perderá.',
+      },
+      {
+        title: 'Una derrota y quedas fuera',
+        body: 'Una victoria o un empate te mantiene con vida. Una derrota — o no elegir — te elimina.',
+      },
+      {
+        title: 'No puedes repetir equipo',
+        body: 'Una vez que elijas un equipo, no podrás volver a elegirlo el resto de la temporada. ¡Elige con cuidado!',
+      },
+      {
+        title: 'Compite con tus amigos',
+        body: 'Crea una liga privada, invita a tus amigos con un código y descubre quién sobrevive más tiempo.',
+      },
+    ],
   },
   signIn: {
     signIn: 'Iniciar sesión',
@@ -366,6 +431,11 @@ export const es: typeof en = {
     leaveConfirmMessage: 'Puedes volver a unirte más tarde con el código de invitación.',
     leaveConfirmLabel: 'Salir',
     couldNotLeave: 'No se pudo salir de la liga',
+    deleteLeague: 'Eliminar liga',
+    deleteConfirmTitle: '¿Eliminar la liga?',
+    deleteConfirmMessage: 'Esta acción no se puede deshacer. Solo está disponible mientras seas el único miembro.',
+    deleteConfirmLabel: 'Eliminar',
+    couldNotDelete: 'No se pudo eliminar la liga',
   },
   pick: {
     title: 'Haz tus Selecciones',
@@ -432,7 +502,7 @@ export const es: typeof en = {
     roundRobinIntro: {
       title: 'Sobrevive cada jornada',
       body: (matchdayCount: number) =>
-        `Cada jornada, elige un equipo que creas que no perderá. Una derrota te elimina — un empate te mantiene con vida. Una vez que elijas un equipo, no podrás volver a elegirlo el resto de la temporada, y si te quedas sin equipos para elegir, también quedas eliminado. La temporada consta de ${matchdayCount} jornadas, una por semana — ¡descubre cuántas puedes sobrevivir!`,
+        `Cada jornada, elige un equipo que creas que no perderá. Una derrota te elimina — un empate te mantiene con vida. No puedes repetir un equipo hasta haber usado todos los equipos de la competición — una vez que lo hagas, la lista se reinicia (ver abajo). La temporada consta de ${matchdayCount} jornadas, una por semana — ¡descubre cuántas puedes sobrevivir!`,
     },
     missingPick: {
       title: 'No elegir te elimina',
@@ -441,6 +511,10 @@ export const es: typeof en = {
     knockoutLegs: {
       title: 'Las eliminatorias se puntúan partido por partido',
       body: 'Cada partido de una eliminatoria a doble partido es su propia jornada, y se juzga solo por el marcador final de ese partido — con prórroga, pero sin la tanda de penales. El marcador global, los goles de visitante y quién avanza no influyen.\n\n• Eliges Bayern para la vuelta. El Bayern pierde 1–2 pero avanza en el global y gana la tanda — quedas eliminado igualmente.\n• 1–1 tras 90 minutos y tu equipo encaja en la prórroga para perder 1–2 — es una derrota, los goles de la prórroga cuentan.\n• 1–1 tras la prórroga y tu equipo gana en los penales — cuenta como empate, sobrevives.\n• Tu equipo pierde la ida 0–1 y luego gana la vuelta 3–0 en una jornada posterior — la selección de la ida ya fue una eliminación.',
+    },
+    teamCycleReset: {
+      title: '¿Te quedaste sin equipos? Empiezas de nuevo',
+      body: 'Si usas todos los equipos de la competición antes de que termine la temporada, tu lista de equipos usados se reinicia — puedes volver a elegir cualquiera de ellos. Nunca quedas eliminado solo por quedarte sin equipos.',
     },
     buyBack: {
       title: 'Recompra (si tu admin la habilita)',

@@ -23,6 +23,7 @@ export default function LeagueDetailScreen() {
   const [league, setLeague] = useState<LeagueDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -82,12 +83,36 @@ export default function LeagueDetailScreen() {
     }
   }
 
+  async function handleDelete() {
+    if (!session || !id) return;
+    const confirmed = await confirmAsync(
+      t.leagueDetail.deleteConfirmTitle,
+      t.leagueDetail.deleteConfirmMessage,
+      t.leagueDetail.deleteConfirmLabel,
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await leaguesApi.delete(id, session.accessToken);
+      router.replace('/');
+    } catch (err) {
+      notify(t.leagueDetail.couldNotDelete, err instanceof ApiError ? err.message : undefined);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   if (!session) {
     return null;
   }
 
   const isCommissioner = league?.commissionerId === session.user.id;
   const myStatus = league?.members.find((m) => m.userId === session.user.id)?.status;
+  // Mirrors leagues.service.ts's archive() restriction — only offer the
+  // button at all when it would actually succeed, rather than let the
+  // commissioner hit a confirm dialog followed by a server-side rejection.
+  const canDelete = isCommissioner && (league?.members.length ?? 0) <= 1;
 
   return (
     <ThemedView style={styles.container}>
@@ -173,6 +198,19 @@ export default function LeagueDetailScreen() {
                   <ActivityIndicator />
                 ) : (
                   <ThemedText style={[styles.leaveButtonText, { color: theme.danger }]}>{t.leagueDetail.leaveLeague}</ThemedText>
+                )}
+              </Pressable>
+            )}
+
+            {canDelete && (
+              <Pressable
+                onPress={handleDelete}
+                disabled={isDeleting}
+                style={[styles.leaveButton, { borderColor: theme.danger }]}>
+                {isDeleting ? (
+                  <ActivityIndicator />
+                ) : (
+                  <ThemedText style={[styles.leaveButtonText, { color: theme.danger }]}>{t.leagueDetail.deleteLeague}</ThemedText>
                 )}
               </Pressable>
             )}

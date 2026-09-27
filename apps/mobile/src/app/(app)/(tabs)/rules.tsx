@@ -93,6 +93,7 @@ export default function RulesScreen() {
       ? [
           { title: t.rules.roundRobinIntro.title, body: t.rules.roundRobinIntro.body(selected.matchdayCount) },
           t.rules.missingPick,
+          t.rules.teamCycleReset,
           t.rules.buyBack,
           t.rules.tieBreak,
         ]
