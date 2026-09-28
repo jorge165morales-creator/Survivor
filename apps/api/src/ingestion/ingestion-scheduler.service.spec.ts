@@ -2,6 +2,7 @@ import { IngestionSchedulerService } from "./ingestion-scheduler.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestionService } from "./ingestion.service";
 import { SeasonSyncService } from "./season-sync.service";
+import { VenueBackfillService } from "./venue-backfill.service";
 import type { ProviderFixture, SportsDataProvider } from "./providers/sports-data.provider.interface";
 
 function makePrisma(
@@ -21,7 +22,11 @@ function makePrisma(
 }
 
 function makeSeasonSync() {
-  return { syncActiveSeasons: jest.fn() } as unknown as SeasonSyncService;
+  return { syncActiveSeasons: jest.fn().mockResolvedValue([]) } as unknown as SeasonSyncService;
+}
+
+function makeVenueBackfill() {
+  return { backfillUpcomingVenues: jest.fn().mockResolvedValue({ attempted: 0, filled: 0 }) } as unknown as VenueBackfillService;
 }
 
 function providerFixture(overrides: Partial<ProviderFixture> = {}): ProviderFixture {
@@ -51,7 +56,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
       getLiveResults: jest.fn(),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await scheduler.pollLiveMatchdays();
 
@@ -72,7 +77,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
       ]),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await scheduler.pollLiveMatchdays();
 
@@ -95,7 +100,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
         .mockResolvedValueOnce([providerFixture({ externalId: "fixture-b" })]),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await scheduler.pollLiveMatchdays();
 
@@ -119,7 +124,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
         .mockResolvedValueOnce([providerFixture({ externalId: "fixture-b" })]),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await expect(scheduler.pollLiveMatchdays()).resolves.not.toThrow();
 
@@ -134,7 +139,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
       getLiveResults: jest.fn().mockResolvedValue([providerFixture({ externalId: "unrelated-fixture" })]),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await scheduler.pollLiveMatchdays();
 
@@ -159,7 +164,7 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
       ]),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await expect(scheduler.pollLiveMatchdays()).resolves.not.toThrow();
 
@@ -173,9 +178,36 @@ describe("IngestionSchedulerService.pollLiveMatchdays", () => {
       getLiveResults: jest.fn().mockRejectedValue(new Error("API-Football request failed: 429")),
       getFixtures: jest.fn(),
     } as unknown as SportsDataProvider;
-    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), provider);
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
 
     await expect(scheduler.pollLiveMatchdays()).resolves.not.toThrow();
     expect(ingestion.upsertFixture).not.toHaveBeenCalled();
+  });
+});
+
+describe("IngestionSchedulerService.syncSeasonFixtures", () => {
+  it("backfills upcoming venues right after syncing active seasons", async () => {
+    const prisma = makePrisma([]);
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = { getLiveResults: jest.fn(), getFixtures: jest.fn() } as unknown as SportsDataProvider;
+    const seasonSync = { syncActiveSeasons: jest.fn().mockResolvedValue([]) } as unknown as SeasonSyncService;
+    const venueBackfill = {
+      backfillUpcomingVenues: jest.fn().mockResolvedValue({ attempted: 5, filled: 3 }),
+    } as unknown as VenueBackfillService;
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, seasonSync, venueBackfill, provider);
+
+    await scheduler.syncSeasonFixtures();
+
+    expect(seasonSync.syncActiveSeasons).toHaveBeenCalledTimes(1);
+    expect(venueBackfill.backfillUpcomingVenues).toHaveBeenCalledTimes(1);
+  });
+
+  it("still runs the venue backfill even when no season needed a fixture sync", async () => {
+    const prisma = makePrisma([]);
+    const ingestion = { upsertFixture: jest.fn() } as unknown as IngestionService;
+    const provider = { getLiveResults: jest.fn(), getFixtures: jest.fn() } as unknown as SportsDataProvider;
+    const scheduler = new IngestionSchedulerService(prisma, ingestion, makeSeasonSync(), makeVenueBackfill(), provider);
+
+    await expect(scheduler.syncSeasonFixtures()).resolves.not.toThrow();
   });
 });

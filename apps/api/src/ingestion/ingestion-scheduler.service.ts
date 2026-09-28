@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { IngestionService } from "./ingestion.service";
 import { SeasonSyncService } from "./season-sync.service";
+import { VenueBackfillService } from "./venue-backfill.service";
 import { SPORTS_DATA_PROVIDER, type SportsDataProvider } from "./providers/sports-data.provider.interface";
 
 // How long before kickoff a fixture enters the live-poll window (catches the
@@ -37,6 +38,7 @@ export class IngestionSchedulerService {
     private readonly prisma: PrismaService,
     private readonly ingestion: IngestionService,
     private readonly seasonSync: SeasonSyncService,
+    private readonly venueBackfill: VenueBackfillService,
     @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
   ) {}
 
@@ -52,6 +54,16 @@ export class IngestionSchedulerService {
       this.logger.log(
         `Season sync ${summary.seasonId}: ${summary.matchdaysUpdated} matchdays, ${summary.fixturesSynced} fixtures`,
       );
+    }
+
+    // Right after fixture discovery, so a newly-synced matchday's stadiums
+    // show up on the pick screen without an admin ever running the one-off
+    // backfillVenue action by hand — see venue-backfill.service.ts for the
+    // budget cap that keeps this from competing too hard with the above
+    // sync or the live poll for the same daily request allowance.
+    const venueSummary = await this.venueBackfill.backfillUpcomingVenues();
+    if (venueSummary.attempted > 0) {
+      this.logger.log(`Venue backfill: filled ${venueSummary.filled}/${venueSummary.attempted} fixtures`);
     }
   }
 
