@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,7 +17,12 @@ export default function JoinLeagueScreen() {
   const theme = useTheme();
   const { t } = useLocale();
   const { session } = useSession();
-  const [inviteCode, setInviteCode] = useState('');
+  // Populated from an invite link's ?code= param (see leagues.service.ts's
+  // getInviteLink and [id]/index.tsx's handleShare) — a friend who already
+  // has the app and is signed in lands here with the code already filled
+  // in, so all that's left is tapping Join.
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const [inviteCode, setInviteCode] = useState(code?.toUpperCase() ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

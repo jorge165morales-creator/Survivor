@@ -43,8 +43,12 @@ export default function LeagueDetailScreen() {
   async function handleShare() {
     if (!session || !id) return;
     try {
-      const { inviteCode } = await leaguesApi.inviteLink(id, session.accessToken);
-      await Share.share({ message: t.leagueDetail.shareMessage(inviteCode) });
+      const { inviteCode, url } = await leaguesApi.inviteLink(id, session.accessToken);
+      // `url` is a real https link now (see InviteLinkResponse), so passing
+      // it as `url` too — not just folded into `message` — lets iOS's share
+      // sheet treat it as the actual link (e.g. Messages previews it,
+      // Mail/Notes attach it properly) instead of just linkified text.
+      await Share.share({ message: t.leagueDetail.shareMessage(inviteCode, url), url });
     } catch (err) {
       notify(t.leagueDetail.couldNotCreateInviteLink, err instanceof ApiError ? err.message : undefined);
     }

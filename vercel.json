@@ -2,5 +2,11 @@
   "installCommand": "pnpm install",
   "buildCommand": "cd apps/mobile && npx expo export -p web",
   "outputDirectory": "apps/mobile/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }],
+  "headers": [
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    }
+  ]
 }

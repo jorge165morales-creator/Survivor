@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { MembershipStatus, Prisma } from "@prisma/client";
 import type {
   InviteLinkResponse,
@@ -23,6 +24,7 @@ export class LeaguesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly recompute: RecomputeService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(
@@ -237,9 +239,18 @@ export class LeaguesService {
     }
     const league = await this.prisma.league.findUniqueOrThrow({ where: { id: leagueId } });
 
+    // A real https URL (not the bare survivor:// scheme this used to return)
+    // so it's an actual tappable link in Messages/WhatsApp/etc, and so it
+    // still works for a recipient without the app installed — it just opens
+    // the web build's own /leagues/join screen (see FRONTEND_URL's other use
+    // in auth.service.ts for password-reset links). Once associatedDomains
+    // in apps/mobile/app.json + the hosted apple-app-site-association file
+    // are live, iOS opens this same URL straight into the native app instead
+    // via Universal Links — no separate link format needed.
+    const frontendUrl = this.config.get<string>("FRONTEND_URL") ?? "http://localhost:8081";
     return {
       inviteCode: league.inviteCode,
-      url: `survivor://leagues/join?code=${league.inviteCode}`,
+      url: `${frontendUrl}/leagues/join?code=${league.inviteCode}`,
     };
   }
 

@@ -149,11 +149,13 @@ export const en = {
     rules: 'Rules',
     eliminatedBanner: "You've been eliminated from this league.",
     shareInvite: 'Share Invite',
-    // Deliberately code-only, no survivor:// deep link — custom URL schemes
-    // aren't auto-linkified (tappable) by iMessage/WhatsApp/SMS, so a raw
-    // survivor:// link just showed up as dead text. The short invite code
-    // (see invite-code.ts) is easy enough to type manually on its own.
-    shareMessage: (inviteCode: string) => `Join my Survivor league! Invite code: ${inviteCode}`,
+    // A real https link (see InviteLinkResponse.url) — unlike the old bare
+    // survivor:// scheme, this auto-linkifies (is tappable) in iMessage/
+    // WhatsApp/SMS, opens straight into the app via Universal Links once
+    // configured, and still works for a friend without the app installed by
+    // falling through to the web build's own /leagues/join screen. The code
+    // stays in the message too as an easy manual fallback.
+    shareMessage: (inviteCode: string, url: string) => `Join my Survivor league! Invite code: ${inviteCode}\n${url}`,
     couldNotCreateInviteLink: 'Could not create invite link',
     membersHeading: (count: number, max: number) => `Members (${count}/${max})`,
     adminTag: ' (Admin)',
@@ -421,7 +423,8 @@ export const es: typeof en = {
     rules: 'Reglas',
     eliminatedBanner: 'Has sido eliminado de esta liga.',
     shareInvite: 'Compartir invitación',
-    shareMessage: (inviteCode: string) => `¡Únete a mi liga de Survivor! Código de invitación: ${inviteCode}`,
+    shareMessage: (inviteCode: string, url: string) =>
+      `¡Únete a mi liga de Survivor! Código de invitación: ${inviteCode}\n${url}`,
     couldNotCreateInviteLink: 'No se pudo crear el enlace de invitación',
     membersHeading: (count: number, max: number) => `Miembros (${count}/${max})`,
     adminTag: ' (Admin)',

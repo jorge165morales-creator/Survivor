@@ -43,6 +43,10 @@ function makeRecompute() {
   return { recomputeLeague: jest.fn().mockResolvedValue(undefined) };
 }
 
+function makeConfig(values: Record<string, string> = {}) {
+  return { get: jest.fn((key: string) => values[key]) };
+}
+
 const SEASON = {
   id: "season-1",
   name: "UEFA Champions League 2026/27",
@@ -59,7 +63,7 @@ describe("LeaguesService", () => {
   beforeEach(() => {
     prisma = makePrisma();
     recompute = makeRecompute();
-    service = new LeaguesService(prisma as unknown as PrismaService, recompute as never);
+    service = new LeaguesService(prisma as unknown as PrismaService, recompute as never, makeConfig() as never);
   });
 
   describe("create", () => {
@@ -223,6 +227,44 @@ describe("LeaguesService", () => {
         where: { id: "m2" },
         data: { status: MembershipStatus.LEFT },
       });
+    });
+  });
+
+  describe("getInviteLink", () => {
+    it("rejects a non-member", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue(null);
+      await expect(service.getInviteLink("league-1", "user-1")).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects a member who has left", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue({ status: MembershipStatus.LEFT });
+      await expect(service.getInviteLink("league-1", "user-1")).rejects.toThrow(ForbiddenException);
+    });
+
+    it("builds a real https join link off FRONTEND_URL, not the old bare custom scheme", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue({ status: MembershipStatus.ACTIVE });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({ id: "league-1", inviteCode: "ABC123" });
+      const configured = new LeaguesService(
+        prisma as unknown as PrismaService,
+        recompute as never,
+        makeConfig({ FRONTEND_URL: "https://survivor-web-one.vercel.app" }) as never,
+      );
+
+      const result = await configured.getInviteLink("league-1", "user-1");
+
+      expect(result).toEqual({
+        inviteCode: "ABC123",
+        url: "https://survivor-web-one.vercel.app/leagues/join?code=ABC123",
+      });
+    });
+
+    it("falls back to localhost when FRONTEND_URL isn't set", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue({ status: MembershipStatus.ACTIVE });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({ id: "league-1", inviteCode: "ABC123" });
+
+      const result = await service.getInviteLink("league-1", "user-1");
+
+      expect(result.url).toBe("http://localhost:8081/leagues/join?code=ABC123");
     });
   });
 

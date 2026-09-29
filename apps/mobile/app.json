@@ -10,6 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.jorgemorales.survivor",
       "supportsTablet": false,
+      "associatedDomains": ["applinks:survivor-web-one.vercel.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {

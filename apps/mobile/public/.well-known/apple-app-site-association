@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "5RF9576QW2.com.jorgemorales.survivor",
+        "appIDs": ["5RF9576QW2.com.jorgemorales.survivor"],
+        "paths": ["/leagues/join*"],
+        "components": [
+          { "/": "/leagues/join", "comment": "Open an invite link straight into the app" }
+        ]
+      }
+    ]
+  }
+}
