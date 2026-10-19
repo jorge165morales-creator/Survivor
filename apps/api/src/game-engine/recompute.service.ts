@@ -111,6 +111,18 @@ export class RecomputeService {
                   buyBackConsumed = true;
                   continue;
                 }
+                // A member who's eliminated can't submit picks at all (see
+                // picks.service.ts's ALREADY_ELIMINATED rejection) — so once
+                // their one buy-back has already forgiven the matchday that
+                // actually eliminated them, every matchday that locked
+                // *before* the buy-back was granted is also missing a pick
+                // for reasons entirely outside their control, not a second
+                // genuine miss. Only a matchday that locked after
+                // buyBackGrantedAt — i.e. one they had a real chance to pick
+                // post-reinstatement — can eliminate them again.
+                if (buyBackConsumed && membership.buyBackGrantedAt && matchday.lockAt < membership.buyBackGrantedAt) {
+                  continue;
+                }
                 finalStatus = "ELIMINATED";
                 eliminatedAtMatchdayId = matchday.id;
               }

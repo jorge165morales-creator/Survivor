@@ -392,8 +392,34 @@ describe("LeaguesService", () => {
 
       expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
         where: { id: "m2" },
-        data: { buyBackAvailable: true },
+        data: { buyBackAvailable: true, buyBackGrantedAt: expect.any(Date) },
       });
+      expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
+    });
+
+    it("does not stomp an existing buyBackGrantedAt when already available (shouldn't happen given the buyBackUsed guard above, but recompute relies on this timestamp staying put)", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ELIMINATED,
+        buyBackAvailable: true, // already granted once
+        buyBackUsed: false,
+      });
+      prisma.league.findUniqueOrThrow.mockResolvedValue({ ...league, season: SEASON, _count: { memberships: 2 } });
+      prisma.leagueMembership.findUniqueOrThrow.mockResolvedValue({
+        id: "m1",
+        userId: "commish",
+        status: MembershipStatus.ACTIVE,
+        isCommissioner: true,
+      });
+      prisma.leagueMembership.findMany.mockResolvedValue([]);
+
+      await service.grantBuyBack("league-1", "commish", "user-2");
+
+      // Already buyBackAvailable — the update call (and its timestamp) is
+      // skipped entirely, so recompute keeps using whichever grant time was
+      // actually persisted the first time.
+      expect(prisma.leagueMembership.update).not.toHaveBeenCalled();
       expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
     });
   });

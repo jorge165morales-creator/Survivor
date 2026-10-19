@@ -31,6 +31,7 @@ function makeTx(opts: {
     eliminatedAtMatchdayId: string | null;
     buyBackAvailable: boolean;
     buyBackUsed: boolean;
+    buyBackGrantedAt?: Date | null;
     joinedAt?: Date;
     hasPaid?: boolean;
     paidAt?: Date | null;
@@ -85,10 +86,14 @@ function makePrisma(tx: unknown) {
 const HOME = "home-team";
 const AWAY = "away-team";
 
+// Fixed far enough in the future that "now" (the real wall clock — this
+// service takes no injectable clock) can never catch up to md-3 and start
+// treating it as locked-with-no-pick. A test that actually wants a matchday
+// to be in the past relative to "now" uses PAST_MATCHDAYS below instead.
 const MATCHDAYS: MatchdayRow[] = [
-  { id: "md-1", sequence: 1, lockAt: new Date("2026-09-01T00:00:00Z") },
-  { id: "md-2", sequence: 2, lockAt: new Date("2026-09-15T00:00:00Z") },
-  { id: "md-3", sequence: 3, lockAt: new Date("2026-09-29T00:00:00Z") },
+  { id: "md-1", sequence: 1, lockAt: new Date("2099-09-01T00:00:00Z") },
+  { id: "md-2", sequence: 2, lockAt: new Date("2099-09-15T00:00:00Z") },
+  { id: "md-3", sequence: 3, lockAt: new Date("2099-09-29T00:00:00Z") },
 ];
 
 const MEMBERSHIP = {
@@ -97,6 +102,7 @@ const MEMBERSHIP = {
   eliminatedAtMatchdayId: null,
   buyBackAvailable: false,
   buyBackUsed: false,
+  buyBackGrantedAt: null,
 };
 
 describe("RecomputeService.recomputeLeague", () => {
@@ -336,6 +342,75 @@ describe("RecomputeService.recomputeLeague", () => {
       status: "ELIMINATED",
       eliminatedAtMatchdayId: "md-2",
       buyBackUsed: true,
+    });
+  });
+
+  describe("buy-back blackout window (regression: a reinstated member was being re-eliminated immediately)", () => {
+    // Once eliminated, a member can't submit picks at all (see
+    // picks.service.ts's ALREADY_ELIMINATED rejection) — so every matchday
+    // that locks between the original elimination and whenever the
+    // commissioner actually grants the buy-back has no pick on record for
+    // reasons entirely outside the member's control. Before buyBackGrantedAt
+    // existed, recompute had no way to distinguish that blackout window from
+    // a genuine second miss, so it forgave the original elimination and then
+    // immediately re-eliminated the member on the very next already-locked
+    // matchday — exactly the bug being regression-tested here.
+    const BLACKOUT_MATCHDAYS: MatchdayRow[] = [
+      { id: "md-1", sequence: 1, lockAt: new Date("2020-01-01T00:00:00Z") },
+      { id: "md-2", sequence: 2, lockAt: new Date("2020-02-01T00:00:00Z") },
+      { id: "md-3", sequence: 3, lockAt: new Date("2020-03-01T00:00:00Z") },
+    ];
+    const LOSS_PICK: PickRow = {
+      id: "pick-1",
+      matchdayId: "md-1",
+      teamId: HOME,
+      outcome: "PENDING",
+      fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+    };
+
+    it("excuses every matchday that locked before the buy-back was granted, staying ACTIVE", async () => {
+      const membership = {
+        ...MEMBERSHIP,
+        buyBackAvailable: true,
+        buyBackGrantedAt: new Date("2020-03-15T00:00:00Z"), // after every matchday above locked
+      };
+      const { tx, pickUpdates, getMembershipUpdate } = makeTx({
+        matchdays: BLACKOUT_MATCHDAYS,
+        membership,
+        picks: [LOSS_PICK], // nothing for md-2/md-3 — the member was shown-eliminated and blocked the whole time
+      });
+      const service = new RecomputeService(makePrisma(tx));
+
+      await service.recomputeLeague("league-1");
+
+      expect(pickUpdates).toEqual([{ pickId: "pick-1", outcome: "LOSS" }]);
+      expect(getMembershipUpdate()).toEqual({
+        status: "ACTIVE",
+        eliminatedAtMatchdayId: null,
+        buyBackUsed: true,
+      });
+    });
+
+    it("still eliminates a reinstated member for a real miss on a matchday that locked after the grant", async () => {
+      const membership = {
+        ...MEMBERSHIP,
+        buyBackAvailable: true,
+        buyBackGrantedAt: new Date("2020-01-15T00:00:00Z"), // before md-2 locked
+      };
+      const { tx, getMembershipUpdate } = makeTx({
+        matchdays: BLACKOUT_MATCHDAYS,
+        membership,
+        picks: [LOSS_PICK], // still nothing for md-2/md-3, but now post-reinstatement they had a real chance to pick
+      });
+      const service = new RecomputeService(makePrisma(tx));
+
+      await service.recomputeLeague("league-1");
+
+      expect(getMembershipUpdate()).toEqual({
+        status: "ELIMINATED",
+        eliminatedAtMatchdayId: "md-2",
+        buyBackUsed: true,
+      });
     });
   });
 

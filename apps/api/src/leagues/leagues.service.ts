@@ -365,7 +365,7 @@ export class LeaguesService {
     if (!membership.buyBackAvailable) {
       await this.prisma.leagueMembership.update({
         where: { id: membership.id },
-        data: { buyBackAvailable: true },
+        data: { buyBackAvailable: true, buyBackGrantedAt: new Date() },
       });
     }
     await this.recompute.recomputeLeague(leagueId);

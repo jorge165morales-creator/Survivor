@@ -284,6 +284,15 @@ model LeagueMembership {
   // of which historical matchday triggered it.
   buyBackAvailable       Boolean           @default(false)
   buyBackUsed            Boolean           @default(false)
+  // When the grant actually happened. Needed because an eliminated member
+  // can't submit picks at all (see picks.service.ts's ALREADY_ELIMINATED
+  // rejection) — so every matchday that locked between the original
+  // elimination and this timestamp has no pick on record for reasons
+  // entirely outside the member's control. recompute.service.ts uses this
+  // to excuse exactly that blackout window, instead of immediately
+  // re-eliminating a just-reinstated member on the very next already-locked
+  // matchday.
+  buyBackGrantedAt       DateTime?
   // Only meaningful when League.paymentRequired is true. hasPaid gates
   // whether this member is actually subject to the game engine at all yet
   // (see recompute.service.ts); paidAt is the moment they became eligible,
