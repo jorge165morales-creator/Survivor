@@ -153,6 +153,7 @@ model Matchday {
   fixtures   Fixture[]
   picks      Pick[]
   eliminationsHere LeagueMembership[] @relation("EliminatedAtMatchday")
+  buyBackForgivenessesHere LeagueMembership[] @relation("BuyBackUsedAtMatchday")
 
   @@unique([seasonId, sequence])
   @@index([seasonId, lockAt])
@@ -293,6 +294,17 @@ model LeagueMembership {
   // re-eliminating a just-reinstated member on the very next already-locked
   // matchday.
   buyBackGrantedAt       DateTime?
+  // Which matchday's elimination the buy-back actually forgave. Without
+  // this, recompute.service.ts's replay (which always seeds its "has the
+  // buy-back been consumed" flag from the persisted buyBackUsed, so a spent
+  // grant stays spent across replays) has no way to tell "this is the SAME
+  // matchday I already forgave, keep forgiving it" apart from "the grant is
+  // simply spent, forgive nothing" — so any later, unrelated recompute call
+  // (a different fixture's result landing, anywhere in the league) would
+  // re-evaluate the member's original qualifying matchday as a brand-new,
+  // unforgivable elimination.
+  buyBackUsedAtMatchdayId String?
+  buyBackUsedAtMatchday   Matchday?         @relation("BuyBackUsedAtMatchday", fields: [buyBackUsedAtMatchdayId], references: [id])
   // Only meaningful when League.paymentRequired is true. hasPaid gates
   // whether this member is actually subject to the game engine at all yet
   // (see recompute.service.ts); paidAt is the moment they became eligible,

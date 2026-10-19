@@ -90,6 +90,16 @@ export class RecomputeService {
           // replay passes even if a later fixture correction reshuffles
           // which matchday would otherwise have eliminated this member.
           let buyBackConsumed = membership.buyBackUsed;
+          // Which matchday that consumption actually happened at — needed
+          // because buyBackConsumed alone can't tell "forgive THIS matchday
+          // again, it's the same one I already forgave" apart from "the
+          // grant is simply spent, forgive nothing new." Without this, any
+          // later replay (triggered by anything — an unrelated fixture
+          // elsewhere in the league) would re-evaluate the member's already-
+          // forgiven matchday as a brand-new, unforgivable elimination.
+          let buyBackUsedAtMatchdayId = membership.buyBackUsedAtMatchdayId;
+          const canForgive = (matchday: { id: string }) =>
+            membership.buyBackAvailable && (!buyBackConsumed || matchday.id === buyBackUsedAtMatchdayId);
           let eliminatedAtMatchdayId: string | null = null;
           let finalStatus: MembershipStatus = "ACTIVE";
 
@@ -107,8 +117,9 @@ export class RecomputeService {
               }
               if (now >= matchday.lockAt) {
                 // Matchday locked with no pick on record — eliminated.
-                if (membership.buyBackAvailable && !buyBackConsumed) {
+                if (canForgive(matchday)) {
                   buyBackConsumed = true;
+                  buyBackUsedAtMatchdayId = matchday.id;
                   continue;
                 }
                 // A member who's eliminated can't submit picks at all (see
@@ -144,8 +155,9 @@ export class RecomputeService {
 
             await this.setOutcomeIfChanged(tx, pick.id, pick.outcome, survival.outcome);
             if (survival.eliminatesUser) {
-              if (membership.buyBackAvailable && !buyBackConsumed) {
+              if (canForgive(matchday)) {
                 buyBackConsumed = true;
+                buyBackUsedAtMatchdayId = matchday.id;
                 continue; // pick.outcome still factually records LOSS above
               }
               finalStatus = "ELIMINATED";
@@ -157,11 +169,17 @@ export class RecomputeService {
           if (
             membership.status !== finalStatus ||
             membership.eliminatedAtMatchdayId !== eliminatedAtMatchdayId ||
-            membership.buyBackUsed !== buyBackConsumed
+            membership.buyBackUsed !== buyBackConsumed ||
+            membership.buyBackUsedAtMatchdayId !== buyBackUsedAtMatchdayId
           ) {
             await tx.leagueMembership.update({
               where: { id: membership.id },
-              data: { status: finalStatus, eliminatedAtMatchdayId, buyBackUsed: buyBackConsumed },
+              data: {
+                status: finalStatus,
+                eliminatedAtMatchdayId,
+                buyBackUsed: buyBackConsumed,
+                buyBackUsedAtMatchdayId,
+              },
             });
           }
         }

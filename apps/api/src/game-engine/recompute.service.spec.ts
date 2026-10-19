@@ -32,6 +32,7 @@ function makeTx(opts: {
     buyBackAvailable: boolean;
     buyBackUsed: boolean;
     buyBackGrantedAt?: Date | null;
+    buyBackUsedAtMatchdayId?: string | null;
     joinedAt?: Date;
     hasPaid?: boolean;
     paidAt?: Date | null;
@@ -103,6 +104,7 @@ const MEMBERSHIP = {
   buyBackAvailable: false,
   buyBackUsed: false,
   buyBackGrantedAt: null,
+  buyBackUsedAtMatchdayId: null,
 };
 
 describe("RecomputeService.recomputeLeague", () => {
@@ -169,6 +171,7 @@ describe("RecomputeService.recomputeLeague", () => {
       status: "ELIMINATED",
       eliminatedAtMatchdayId: "md-2",
       buyBackUsed: false,
+      buyBackUsedAtMatchdayId: null,
     });
   });
 
@@ -223,6 +226,7 @@ describe("RecomputeService.recomputeLeague", () => {
       status: "ELIMINATED",
       eliminatedAtMatchdayId: "md-2",
       buyBackUsed: false,
+      buyBackUsedAtMatchdayId: null,
     });
   });
 
@@ -303,11 +307,13 @@ describe("RecomputeService.recomputeLeague", () => {
       { pickId: "pick-1", outcome: "LOSS" },
       { pickId: "pick-2", outcome: "WIN" },
     ]);
-    // ...but the membership survives, and the grant is now marked spent.
+    // ...but the membership survives, and the grant is now marked spent,
+    // recording exactly which matchday it forgave.
     expect(getMembershipUpdate()).toEqual({
       status: "ACTIVE",
       eliminatedAtMatchdayId: null,
       buyBackUsed: true,
+      buyBackUsedAtMatchdayId: "md-1",
     });
   });
 
@@ -338,11 +344,52 @@ describe("RecomputeService.recomputeLeague", () => {
     await service.recomputeLeague("league-1");
 
     expect(pickUpdates).toEqual([{ pickId: "pick-2", outcome: "LOSS" }]);
+    // buyBackUsedAtMatchdayId stays null — this membership predates that
+    // column (simulating data from before it existed), so there's no record
+    // of which matchday the earlier pass actually forgave, and this replay
+    // correctly can't tell md-2 apart from a genuine second miss.
     expect(getMembershipUpdate()).toEqual({
       status: "ELIMINATED",
       eliminatedAtMatchdayId: "md-2",
       buyBackUsed: true,
+      buyBackUsedAtMatchdayId: null,
     });
+  });
+
+  it("does not re-eliminate a member at the matchday their buy-back already forgave, on a later unrelated replay", async () => {
+    // Reproduces the real production bug: a first recompute pass already
+    // forgave md-1's loss and persisted buyBackUsed/buyBackUsedAtMatchdayId
+    // — this test starts from THAT already-persisted state (not fresh) to
+    // confirm a second, later replay (triggered by anything — a different
+    // fixture's result landing anywhere in the league) doesn't re-evaluate
+    // md-1 as a brand-new, unforgivable elimination just because
+    // buyBackConsumed seeds as already-true.
+    const picks: PickRow[] = [
+      {
+        id: "pick-1",
+        matchdayId: "md-1",
+        teamId: HOME,
+        outcome: "LOSS", // already recorded from the earlier pass
+        fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+      },
+      {
+        id: "pick-2",
+        matchdayId: "md-2",
+        teamId: AWAY,
+        outcome: "WIN",
+        fixture: { id: "f2", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+      },
+    ];
+    const membership = { ...MEMBERSHIP, buyBackAvailable: true, buyBackUsed: true, buyBackUsedAtMatchdayId: "md-1" };
+    const { tx, pickUpdates, getMembershipUpdate } = makeTx({ matchdays: MATCHDAYS, membership, picks });
+    const service = new RecomputeService(makePrisma(tx));
+
+    await service.recomputeLeague("league-1");
+
+    // Nothing to update — pick outcomes are already correct and the
+    // membership is still correctly ACTIVE, so the idempotency guard holds.
+    expect(pickUpdates).toEqual([]);
+    expect(getMembershipUpdate()).toBeNull();
   });
 
   describe("buy-back blackout window (regression: a reinstated member was being re-eliminated immediately)", () => {
@@ -388,6 +435,7 @@ describe("RecomputeService.recomputeLeague", () => {
         status: "ACTIVE",
         eliminatedAtMatchdayId: null,
         buyBackUsed: true,
+        buyBackUsedAtMatchdayId: "md-1",
       });
     });
 
@@ -406,10 +454,14 @@ describe("RecomputeService.recomputeLeague", () => {
 
       await service.recomputeLeague("league-1");
 
+      // Still recorded as having forgiven md-1 — that forgiveness itself
+      // isn't undone just because a later matchday went on to eliminate them
+      // for real.
       expect(getMembershipUpdate()).toEqual({
         status: "ELIMINATED",
         eliminatedAtMatchdayId: "md-2",
         buyBackUsed: true,
+        buyBackUsedAtMatchdayId: "md-1",
       });
     });
   });
@@ -439,6 +491,7 @@ describe("RecomputeService.recomputeLeague", () => {
         status: "ELIMINATED",
         eliminatedAtMatchdayId: "md-2",
         buyBackUsed: false,
+        buyBackUsedAtMatchdayId: null,
       });
     });
 
@@ -480,6 +533,7 @@ describe("RecomputeService.recomputeLeague", () => {
         status: "ELIMINATED",
         eliminatedAtMatchdayId: "md-2",
         buyBackUsed: false,
+        buyBackUsedAtMatchdayId: null,
       });
     });
 
@@ -518,6 +572,7 @@ describe("RecomputeService.recomputeLeague", () => {
         status: "ELIMINATED",
         eliminatedAtMatchdayId: "md-1",
         buyBackUsed: false,
+        buyBackUsedAtMatchdayId: null,
       });
     });
   });
