@@ -5,7 +5,6 @@ import { AdminGuard } from "../common/admin.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { LeaguesService } from "../leagues/leagues.service";
 import { RecomputeService } from "../game-engine/recompute.service";
-import { PrismaService } from "../prisma/prisma.service";
 
 // Admin-only access to any league, regardless of who commissions it — for
 // support requests (raising a member cap, etc.) on a league the admin
@@ -17,16 +16,7 @@ export class AdminLeaguesController {
   constructor(
     private readonly leagues: LeaguesService,
     private readonly recompute: RecomputeService,
-    private readonly prisma: PrismaService,
   ) {}
-
-  // Raw membership row for debugging a status/buy-back report — e.g.
-  // confirming whether buyBackUsed/buyBackUsedAtMatchdayId actually
-  // persisted what a recompute call was expected to write.
-  @Get(":id/members/:userId/debug")
-  debugMembership(@Param("id") id: string, @Param("userId") userId: string) {
-    return this.prisma.leagueMembership.findUnique({ where: { leagueId_userId: { leagueId: id, userId } } });
-  }
 
   @Get()
   list(@Query("search") search?: string) {
