@@ -424,6 +424,41 @@ describe("LeaguesService", () => {
     });
   });
 
+  describe("adminRevokeBuyBack", () => {
+    it("rejects an unknown membership", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue(null);
+      await expect(service.adminRevokeBuyBack("league-1", "user-2")).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects a member who was never granted a buy-back", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue({ id: "m2", buyBackAvailable: false });
+      await expect(service.adminRevokeBuyBack("league-1", "user-2")).rejects.toThrow(BadRequestException);
+    });
+
+    it("clears the grant back to its never-granted state and replays", async () => {
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        buyBackAvailable: true,
+        buyBackUsed: true,
+        buyBackGrantedAt: new Date(),
+        buyBackUsedAtMatchdayId: "md-2",
+      });
+
+      await service.adminRevokeBuyBack("league-1", "user-2");
+
+      expect(prisma.leagueMembership.update).toHaveBeenCalledWith({
+        where: { id: "m2" },
+        data: {
+          buyBackAvailable: false,
+          buyBackUsed: false,
+          buyBackGrantedAt: null,
+          buyBackUsedAtMatchdayId: null,
+        },
+      });
+      expect(recompute.recomputeLeague).toHaveBeenCalledWith("league-1");
+    });
+  });
+
   describe("markMemberPaid", () => {
     const league = { id: "league-1", commissionerId: "commish", paymentRequired: true };
 

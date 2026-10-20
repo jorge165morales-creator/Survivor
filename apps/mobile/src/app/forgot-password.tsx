@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
   const { t } = useLocale();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -23,10 +23,10 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      // The API always responds the same way whether or not the email is
-      // registered, so there's nothing account-specific to branch on here —
+      // The API always responds the same way whether or not the account is
+      // found, so there's nothing account-specific to branch on here —
       // showing the confirmation is the only correct behavior either way.
-      await authApi.forgotPassword({ email: email.trim() });
+      await authApi.forgotPassword({ identifier: identifier.trim() });
       setIsSent(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.common.somethingWentWrong);
@@ -53,13 +53,12 @@ export default function ForgotPasswordScreen() {
             </ThemedText>
 
             <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t.forgotPassword.emailPlaceholder}
+              value={identifier}
+              onChangeText={setIdentifier}
+              placeholder={t.forgotPassword.identifierPlaceholder}
               placeholderTextColor={theme.textSecondary}
               autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
+              autoComplete="off"
               style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
             />
 
@@ -71,7 +70,7 @@ export default function ForgotPasswordScreen() {
 
             <GradientButton
               onPress={handleSubmit}
-              disabled={email.trim().length === 0}
+              disabled={identifier.trim().length === 0}
               isLoading={isSubmitting}
               style={styles.button}>
               {t.forgotPassword.submit}

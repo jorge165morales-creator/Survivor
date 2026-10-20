@@ -51,10 +51,10 @@ export const en = {
   },
   forgotPassword: {
     title: 'Reset your password',
-    subtitle: "Enter your email and we'll send you a link to reset your password.",
-    emailPlaceholder: 'Email',
+    subtitle: "Enter your email or username and we'll send a reset link to the email on your account.",
+    identifierPlaceholder: 'Email or username',
     submit: 'Send Reset Link',
-    confirmation: "If an account exists for that email, we've sent a link to reset your password.",
+    confirmation: "If we found an account, we've sent a link to reset your password to the email on file.",
     backToSignIn: 'Back to sign in',
   },
   resetPassword: {
@@ -325,10 +325,10 @@ export const es: typeof en = {
   },
   forgotPassword: {
     title: 'Restablece tu contraseña',
-    subtitle: 'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
-    emailPlaceholder: 'Correo electrónico',
+    subtitle: 'Ingresa tu correo o nombre de usuario y enviaremos un enlace al correo de tu cuenta.',
+    identifierPlaceholder: 'Correo o nombre de usuario',
     submit: 'Enviar enlace',
-    confirmation: 'Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña.',
+    confirmation: 'Si encontramos una cuenta, enviamos un enlace para restablecer tu contraseña al correo registrado.',
     backToSignIn: 'Volver a iniciar sesión',
   },
   resetPassword: {

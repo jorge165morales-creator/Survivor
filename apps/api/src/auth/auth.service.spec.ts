@@ -226,6 +226,29 @@ describe("AuthService", () => {
         expect.stringContaining("/reset-password?token="),
       );
     });
+
+    it("looks up by username instead of email when the identifier has no @", async () => {
+      users.findByUsername.mockResolvedValue(makeUser({ passwordHash: "hashed", email: "player@example.com" }));
+
+      await service.forgotPassword("player1");
+
+      expect(users.findByUsername).toHaveBeenCalledWith("player1");
+      expect(users.findByEmail).not.toHaveBeenCalled();
+      // Still only ever emails whatever address is actually on file for the
+      // account — the caller never learns it from the response either way.
+      expect(mail.sendPasswordResetEmail).toHaveBeenCalledWith(
+        "player@example.com",
+        expect.stringContaining("/reset-password?token="),
+      );
+    });
+
+    it("does nothing when no account exists for the username either, without signaling that to the caller", async () => {
+      users.findByUsername.mockResolvedValue(null);
+
+      await expect(service.forgotPassword("nobody")).resolves.toBeUndefined();
+      expect(mail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(users.createPasswordResetToken).not.toHaveBeenCalled();
+    });
   });
 
   describe("resetPassword", () => {

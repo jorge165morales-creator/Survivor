@@ -60,7 +60,7 @@ export class AuthController {
   @Post("forgot-password")
   @HttpCode(204)
   forgotPassword(@Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput) {
-    return this.auth.forgotPassword(body.email);
+    return this.auth.forgotPassword(body.identifier);
   }
 
   @Post("reset-password")

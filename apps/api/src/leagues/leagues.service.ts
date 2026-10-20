@@ -374,6 +374,39 @@ export class LeaguesService {
   }
 
   /**
+   * Support-only undo for a buy-back granted to the wrong person — there's
+   * deliberately no commissioner-facing button for this (the existing
+   * confirm dialog in the app is the intended safety net; a revoke button
+   * visible to commissioners would invite exactly the kind of after-the-
+   * fact dispute between strangers this is trying to avoid). Clears the
+   * grant back to its never-granted state and replays, so a member who'd
+   * already been reinstated correctly reverts to ELIMINATED at whichever
+   * matchday actually got them.
+   */
+  async adminRevokeBuyBack(leagueId: string, userId: string): Promise<void> {
+    const membership = await this.prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId, userId } },
+    });
+    if (!membership) {
+      throw new NotFoundException("Membership not found");
+    }
+    if (!membership.buyBackAvailable) {
+      throw new BadRequestException("This member has no buy-back grant to revoke");
+    }
+
+    await this.prisma.leagueMembership.update({
+      where: { id: membership.id },
+      data: {
+        buyBackAvailable: false,
+        buyBackUsed: false,
+        buyBackGrantedAt: null,
+        buyBackUsedAtMatchdayId: null,
+      },
+    });
+    await this.recompute.recomputeLeague(leagueId);
+  }
+
+  /**
    * Commissioner-only: for a paymentRequired league, a member can join and
    * browse but doesn't actually enter the competition (isn't subject to the
    * game engine, doesn't show up in standings) until this flips them paid.

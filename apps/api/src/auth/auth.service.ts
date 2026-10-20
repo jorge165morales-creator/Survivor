@@ -120,8 +120,16 @@ export class AuthService {
   // whether the send succeeds — the response can't be used to enumerate
   // accounts, and the client shows one generic "check your email" message
   // regardless of outcome.
-  async forgotPassword(email: string): Promise<void> {
-    const user = await this.users.findByEmail(email);
+  async forgotPassword(identifier: string): Promise<void> {
+    // A username never contains "@"; an email always does — so this alone
+    // decides which lookup to use. Either way the reset link still only
+    // ever goes to the email already on file, and the response is
+    // identical regardless of whether anything was found (see below) — a
+    // username lookup can't be used to enumerate or confirm email addresses
+    // any more than the existing email lookup could.
+    const user = identifier.includes("@")
+      ? await this.users.findByEmail(identifier)
+      : await this.users.findByUsername(identifier);
     if (!user) return;
 
     if (!user.passwordHash) {

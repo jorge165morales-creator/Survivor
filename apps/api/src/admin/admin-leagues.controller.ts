@@ -39,4 +39,14 @@ export class AdminLeaguesController {
     await this.recompute.recomputeLeague(id);
     return { ok: true };
   }
+
+  // Support-only undo for a buy-back granted to the wrong member — see
+  // LeaguesService.adminRevokeBuyBack's doc comment for why this
+  // deliberately isn't exposed to commissioners themselves.
+  @Post(":id/members/:userId/revoke-buy-back")
+  @HttpCode(200)
+  async revokeBuyBack(@Param("id") id: string, @Param("userId") userId: string) {
+    await this.leagues.adminRevokeBuyBack(id, userId);
+    return { ok: true };
+  }
 }

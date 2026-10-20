@@ -39,8 +39,13 @@ export const refreshTokenSchema = z.object({
 });
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
+// Accepts either an email or a @username — someone who's forgotten which
+// email they signed up with usually still remembers (or can be told by any
+// league-mate, since usernames are visible in every member list) their own
+// username, and that alone is now enough to self-recover without needing
+// anyone to look up or hand over their actual email address.
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  identifier: z.string().min(1),
 });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 
