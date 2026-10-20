@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 const REMINDER_LEAD_MS = 60 * 60 * 1000;
+const DRAFT_REMINDER_DELAY_SECONDS = 10 * 60;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -85,5 +86,47 @@ export async function syncPickReminder(params: {
       Platform.OS === 'web'
         ? null
         : { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
+  });
+}
+
+function draftReminderId(leagueId: string, matchdayId: string): string {
+  return `draft-pick-reminder-${leagueId}-${matchdayId}`;
+}
+
+/**
+ * Schedules a "don't forget to submit your pick!" reminder ~10 minutes
+ * after a team is tapped but left unsubmitted. Same cancel-then-reschedule
+ * pattern as syncPickReminder: call it on every selection change, so
+ * picking a different team pushes the reminder back, and submitting (or
+ * reverting to whatever's already submitted) clears it via
+ * shouldRemind: false. No-op on web — a relative delay tied to the current
+ * browser tab staying open isn't a reminder worth scheduling.
+ */
+export async function syncDraftPickReminder(params: {
+  leagueId: string;
+  matchdayId: string;
+  title: string;
+  body: string;
+  shouldRemind: boolean;
+}): Promise<void> {
+  const id = draftReminderId(params.leagueId, params.matchdayId);
+  await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+
+  if (!params.shouldRemind || Platform.OS === 'web') return;
+
+  const granted = await ensurePermission();
+  if (!granted) return;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: id,
+    content: {
+      title: params.title,
+      body: params.body,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: DRAFT_REMINDER_DELAY_SECONDS,
+      repeats: false,
+    },
   });
 }

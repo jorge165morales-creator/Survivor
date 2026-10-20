@@ -20,7 +20,7 @@ import { leaguesApi, picksApi, seasonsApi, ApiError } from '@/api/client';
 import { useSession } from '@/state/session';
 import { notify } from '@/utils/alerts';
 import { goBackOrHome } from '@/utils/navigation';
-import { syncPickReminder } from '@/utils/notifications';
+import { syncPickReminder, syncDraftPickReminder } from '@/utils/notifications';
 import { useLocale } from '@/i18n/locale';
 import type { Translations } from '@/i18n/translations';
 import { useTheme } from '@/hooks/use-theme';
@@ -99,6 +99,7 @@ export default function PickScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
   const [entries, setEntries] = useState<MatchdayEntry[] | null>(null);
+  const [leagueName, setLeagueName] = useState('');
   const [myStatus, setMyStatus] = useState<MembershipStatus | null>(null);
   const [isUnpaid, setIsUnpaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function PickScreen() {
     setError(null);
     try {
       const league = await leaguesApi.getById(id, session.accessToken);
+      setLeagueName(league.name);
       const myMembership = league.members.find((m) => m.userId === session.user.id);
       const isEliminated = myMembership?.status === 'ELIMINATED';
       const isUnpaid = league.paymentRequired && !(myMembership?.hasPaid ?? false);
@@ -210,6 +212,7 @@ export default function PickScreen() {
               <MatchdaySection
                 key={entry.matchday.id}
                 leagueId={id}
+                leagueName={leagueName}
                 entry={entry}
                 isEliminated={isEliminated}
                 isUnpaid={isUnpaid}
@@ -226,6 +229,7 @@ export default function PickScreen() {
 
 function MatchdaySection({
   leagueId,
+  leagueName,
   entry,
   isEliminated,
   isUnpaid,
@@ -233,6 +237,7 @@ function MatchdaySection({
   onChanged,
 }: {
   leagueId: string;
+  leagueName: string;
   entry: MatchdayEntry;
   isEliminated: boolean;
   isUnpaid: boolean;
@@ -254,6 +259,20 @@ function MatchdaySection({
   const isLocked = new Date(options.lockAt).getTime() <= now;
   const canPick = !isLocked && !isEliminated && !isUnpaid;
   const hasChanged = selectedTeamId !== null && selectedTeamId !== (options.currentPick?.teamId ?? null);
+
+  // A team tapped but left unsubmitted gets a "don't forget!" reminder ~10
+  // min later — rescheduled on every change (picking a different team
+  // pushes it back) and cleared the moment hasChanged goes false again
+  // (submitted, or reverted back to whatever's already on record).
+  useEffect(() => {
+    void syncDraftPickReminder({
+      leagueId,
+      matchdayId: matchday.id,
+      title: t.pick.draftReminderTitle(leagueName),
+      body: t.pick.draftReminderBody(matchday.roundLabel),
+      shouldRemind: canPick && hasChanged,
+    });
+  }, [leagueId, leagueName, matchday.id, matchday.roundLabel, canPick, hasChanged, t]);
   const hasNoEligibleTeams =
     !options.currentPick &&
     options.fixtures.length > 0 &&
