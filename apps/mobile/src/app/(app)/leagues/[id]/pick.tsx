@@ -248,15 +248,23 @@ function MatchdaySection({
   const { t, locale } = useLocale();
   const { session } = useSession();
   const { matchday, options } = entry;
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(options.currentPick?.teamId ?? null);
+  const isLocked = new Date(options.lockAt).getTime() <= now;
+  // Once eliminated, a pick pre-submitted for a future (not-yet-locked)
+  // matchday is moot — the player's already out, so it shouldn't still show
+  // as selected. An already-locked matchday keeps showing its resolved
+  // pick/outcome as history, unaffected — this only hides what's otherwise
+  // still a live-looking, editable-seeming selection.
+  const showCurrentPick = !isEliminated || isLocked;
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(
+    showCurrentPick ? options.currentPick?.teamId ?? null : null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setSelectedTeamId(options.currentPick?.teamId ?? null);
-  }, [options.currentPick?.teamId]);
+    setSelectedTeamId(showCurrentPick ? options.currentPick?.teamId ?? null : null);
+  }, [options.currentPick?.teamId, showCurrentPick]);
 
   const usedTeamIds = useMemo(() => new Set(options.usedTeamIds), [options.usedTeamIds]);
-  const isLocked = new Date(options.lockAt).getTime() <= now;
   const canPick = !isLocked && !isEliminated && !isUnpaid;
   const hasChanged = selectedTeamId !== null && selectedTeamId !== (options.currentPick?.teamId ?? null);
 
