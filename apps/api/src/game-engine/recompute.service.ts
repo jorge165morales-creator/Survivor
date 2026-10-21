@@ -122,18 +122,6 @@ export class RecomputeService {
                   buyBackUsedAtMatchdayId = matchday.id;
                   continue;
                 }
-                // A member who's eliminated can't submit picks at all (see
-                // picks.service.ts's ALREADY_ELIMINATED rejection) — so once
-                // their one buy-back has already forgiven the matchday that
-                // actually eliminated them, every matchday that locked
-                // *before* the buy-back was granted is also missing a pick
-                // for reasons entirely outside their control, not a second
-                // genuine miss. Only a matchday that locked after
-                // buyBackGrantedAt — i.e. one they had a real chance to pick
-                // post-reinstatement — can eliminate them again.
-                if (buyBackConsumed && membership.buyBackGrantedAt && matchday.lockAt < membership.buyBackGrantedAt) {
-                  continue;
-                }
                 finalStatus = "ELIMINATED";
                 eliminatedAtMatchdayId = matchday.id;
               }
@@ -187,6 +175,67 @@ export class RecomputeService {
       { timeout: 30_000 },
     );
     this.logger.log(`Recomputed league ${leagueId}`);
+  }
+
+  /**
+   * How many separate loss-or-missed-pick events this member has racked up
+   * so far, ignoring buy-back entirely — used by LeaguesService.grantBuyBack
+   * as a gate *before* a grant happens, not by recomputeLeague itself.
+   * Product rule: buy-back only ever works after exactly one qualifying
+   * elimination event; a second one (whatever caused it — another real
+   * loss, or a matchday that locked with no pick on record because they
+   * were already shown-eliminated and blocked from picking) permanently
+   * voids it, so it should never even be offered to grant. Walks the
+   * member's whole timeline (not just up to the first event, unlike
+   * recomputeLeague's loop) specifically to be able to tell "exactly one"
+   * apart from "two or more."
+   */
+  async countQualifyingEliminationEvents(leagueId: string, userId: string): Promise<number> {
+    const [league, membership] = await Promise.all([
+      this.prisma.league.findUniqueOrThrow({ where: { id: leagueId }, select: { seasonId: true, paymentRequired: true } }),
+      this.prisma.leagueMembership.findUniqueOrThrow({ where: { leagueId_userId: { leagueId, userId } } }),
+    ]);
+    const [matchdays, picks] = await Promise.all([
+      this.prisma.matchday.findMany({ where: { seasonId: league.seasonId }, orderBy: { sequence: "asc" } }),
+      this.prisma.pick.findMany({ where: { leagueId, userId }, include: { fixture: true } }),
+    ]);
+
+    const eligibleFrom = league.paymentRequired
+      ? membership.hasPaid
+        ? (membership.paidAt ?? membership.joinedAt)
+        : null
+      : membership.joinedAt;
+    if (!eligibleFrom) return 0;
+
+    const pickByMatchdayId = new Map(picks.map((p) => [p.matchdayId, p]));
+    const now = new Date();
+    let count = 0;
+
+    for (const matchday of matchdays) {
+      const pick = pickByMatchdayId.get(matchday.id);
+
+      if (!pick) {
+        if (matchday.lockAt < eligibleFrom) continue;
+        if (now >= matchday.lockAt) count++;
+        else break; // Not yet locked — nothing more to evaluate.
+        continue;
+      }
+
+      const fixture = pick.fixture;
+      if (!fixture || fixture.status !== "FINISHED" || !fixture.result) {
+        break; // Undetermined — stop, same as recomputeLeague.
+      }
+
+      const survival = computeSurvival({
+        pickedTeamId: pick.teamId,
+        fixtureHomeTeamId: fixture.homeTeamId,
+        fixtureAwayTeamId: fixture.awayTeamId,
+        result: fixture.result,
+      });
+      if (survival.eliminatesUser) count++;
+    }
+
+    return count;
   }
 
   private async setOutcomeIfChanged(

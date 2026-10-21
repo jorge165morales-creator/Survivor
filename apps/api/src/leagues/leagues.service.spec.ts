@@ -40,7 +40,10 @@ function makePrisma(): MockPrisma {
 }
 
 function makeRecompute() {
-  return { recomputeLeague: jest.fn().mockResolvedValue(undefined) };
+  return {
+    recomputeLeague: jest.fn().mockResolvedValue(undefined),
+    countQualifyingEliminationEvents: jest.fn().mockResolvedValue(1),
+  };
 }
 
 function makeConfig(values: Record<string, string> = {}) {
@@ -367,6 +370,21 @@ describe("LeaguesService", () => {
       await expect(service.grantBuyBack("league-1", "commish", "user-2")).rejects.toThrow(
         ConflictException,
       );
+    });
+
+    it("rejects granting when the member has more than one qualifying elimination event", async () => {
+      prisma.league.findUnique.mockResolvedValue(league);
+      prisma.leagueMembership.findUnique.mockResolvedValue({
+        id: "m2",
+        status: MembershipStatus.ELIMINATED,
+        buyBackAvailable: false,
+        buyBackUsed: false,
+      });
+      recompute.countQualifyingEliminationEvents.mockResolvedValue(2);
+
+      await expect(service.grantBuyBack("league-1", "commish", "user-2")).rejects.toThrow(BadRequestException);
+      expect(prisma.leagueMembership.update).not.toHaveBeenCalled();
+      expect(recompute.recomputeLeague).not.toHaveBeenCalled();
     });
 
     it("grants the buy-back and triggers a recompute", async () => {

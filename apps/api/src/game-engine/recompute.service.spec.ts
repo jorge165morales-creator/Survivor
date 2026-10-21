@@ -392,17 +392,17 @@ describe("RecomputeService.recomputeLeague", () => {
     expect(getMembershipUpdate()).toBeNull();
   });
 
-  describe("buy-back blackout window (regression: a reinstated member was being re-eliminated immediately)", () => {
-    // Once eliminated, a member can't submit picks at all (see
-    // picks.service.ts's ALREADY_ELIMINATED rejection) — so every matchday
-    // that locks between the original elimination and whenever the
-    // commissioner actually grants the buy-back has no pick on record for
-    // reasons entirely outside the member's control. Before buyBackGrantedAt
-    // existed, recompute had no way to distinguish that blackout window from
-    // a genuine second miss, so it forgave the original elimination and then
-    // immediately re-eliminated the member on the very next already-locked
-    // matchday — exactly the bug being regression-tested here.
-    const BLACKOUT_MATCHDAYS: MatchdayRow[] = [
+  describe("buy-back strictness: a second qualifying event is never excused, whatever caused it", () => {
+    // Product rule (2026-10-21): buy-back only ever works after exactly one
+    // qualifying elimination event. A missed pick caused purely by already
+    // being shown-eliminated (and therefore blocked from picking — see
+    // picks.service.ts's ALREADY_ELIMINATED rejection) still counts as a
+    // second event and is never excused here — LeaguesService.grantBuyBack
+    // is where that's actually prevented, by refusing to grant in the first
+    // place once countQualifyingEliminationEvents is already > 1. This test
+    // simulates buyBackAvailable having been set true anyway (e.g. stale
+    // data) to confirm recompute itself has no separate excuse path.
+    const MATCHDAYS_3: MatchdayRow[] = [
       { id: "md-1", sequence: 1, lockAt: new Date("2020-01-01T00:00:00Z") },
       { id: "md-2", sequence: 2, lockAt: new Date("2020-02-01T00:00:00Z") },
       { id: "md-3", sequence: 3, lockAt: new Date("2020-03-01T00:00:00Z") },
@@ -415,48 +415,17 @@ describe("RecomputeService.recomputeLeague", () => {
       fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
     };
 
-    it("excuses every matchday that locked before the buy-back was granted, staying ACTIVE", async () => {
-      const membership = {
-        ...MEMBERSHIP,
-        buyBackAvailable: true,
-        buyBackGrantedAt: new Date("2020-03-15T00:00:00Z"), // after every matchday above locked
-      };
-      const { tx, pickUpdates, getMembershipUpdate } = makeTx({
-        matchdays: BLACKOUT_MATCHDAYS,
-        membership,
-        picks: [LOSS_PICK], // nothing for md-2/md-3 — the member was shown-eliminated and blocked the whole time
-      });
-      const service = new RecomputeService(makePrisma(tx));
-
-      await service.recomputeLeague("league-1");
-
-      expect(pickUpdates).toEqual([{ pickId: "pick-1", outcome: "LOSS" }]);
-      expect(getMembershipUpdate()).toEqual({
-        status: "ACTIVE",
-        eliminatedAtMatchdayId: null,
-        buyBackUsed: true,
-        buyBackUsedAtMatchdayId: "md-1",
-      });
-    });
-
-    it("still eliminates a reinstated member for a real miss on a matchday that locked after the grant", async () => {
-      const membership = {
-        ...MEMBERSHIP,
-        buyBackAvailable: true,
-        buyBackGrantedAt: new Date("2020-01-15T00:00:00Z"), // before md-2 locked
-      };
+    it("forgives the original loss but still eliminates for the missed pick that followed it", async () => {
+      const membership = { ...MEMBERSHIP, buyBackAvailable: true, buyBackGrantedAt: new Date("2020-03-15T00:00:00Z") };
       const { tx, getMembershipUpdate } = makeTx({
-        matchdays: BLACKOUT_MATCHDAYS,
+        matchdays: MATCHDAYS_3,
         membership,
-        picks: [LOSS_PICK], // still nothing for md-2/md-3, but now post-reinstatement they had a real chance to pick
+        picks: [LOSS_PICK], // nothing for md-2/md-3 — blocked from picking after md-1's loss
       });
       const service = new RecomputeService(makePrisma(tx));
 
       await service.recomputeLeague("league-1");
 
-      // Still recorded as having forgiven md-1 — that forgiveness itself
-      // isn't undone just because a later matchday went on to eliminate them
-      // for real.
       expect(getMembershipUpdate()).toEqual({
         status: "ELIMINATED",
         eliminatedAtMatchdayId: "md-2",
@@ -575,5 +544,137 @@ describe("RecomputeService.recomputeLeague", () => {
         buyBackUsedAtMatchdayId: null,
       });
     });
+  });
+});
+
+describe("RecomputeService.countQualifyingEliminationEvents", () => {
+  function makeCountPrisma(opts: {
+    paymentRequired?: boolean;
+    membership: { hasPaid?: boolean; paidAt?: Date | null; joinedAt?: Date };
+    matchdays: MatchdayRow[];
+    picks: PickRow[];
+  }) {
+    return {
+      league: {
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValue({ seasonId: "season-1", paymentRequired: opts.paymentRequired ?? false }),
+      },
+      leagueMembership: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          joinedAt: new Date("1970-01-01T00:00:00Z"),
+          hasPaid: false,
+          paidAt: null,
+          ...opts.membership,
+        }),
+      },
+      matchday: { findMany: jest.fn().mockResolvedValue(opts.matchdays) },
+      pick: { findMany: jest.fn().mockResolvedValue(opts.picks) },
+    } as unknown as PrismaService;
+  }
+
+  // Matchdays already locked (unlike MATCHDAYS above, which are in 2099 and
+  // never actually "lock") — this method cares about "already happened,"
+  // same as recomputeLeague's missing-pick branch.
+  const LOCKED_MATCHDAYS: MatchdayRow[] = [
+    { id: "md-1", sequence: 1, lockAt: new Date("2020-01-01T00:00:00Z") },
+    { id: "md-2", sequence: 2, lockAt: new Date("2020-02-01T00:00:00Z") },
+    { id: "md-3", sequence: 3, lockAt: new Date("2020-03-01T00:00:00Z") },
+  ];
+
+  it("counts zero for a member who's never lost or missed a pick", async () => {
+    const picks: PickRow[] = [
+      {
+        id: "pick-1",
+        matchdayId: "md-1",
+        teamId: HOME,
+        outcome: "WIN",
+        fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "HOME_WIN" },
+      },
+    ];
+    const prisma = makeCountPrisma({ membership: {}, matchdays: [LOCKED_MATCHDAYS[0]], picks });
+    const service = new RecomputeService(prisma);
+
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(0);
+  });
+
+  it("counts exactly one for a single loss with nothing after it", async () => {
+    const picks: PickRow[] = [
+      {
+        id: "pick-1",
+        matchdayId: "md-1",
+        teamId: HOME,
+        outcome: "LOSS",
+        fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+      },
+      // nothing for md-2/md-3 — both locked, both count
+    ];
+    const prisma = makeCountPrisma({ membership: {}, matchdays: [LOCKED_MATCHDAYS[0]], picks });
+    const service = new RecomputeService(prisma);
+
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(1);
+  });
+
+  it("counts two for a loss followed by a missed pick on an already-locked matchday", async () => {
+    const picks: PickRow[] = [
+      {
+        id: "pick-1",
+        matchdayId: "md-1",
+        teamId: HOME,
+        outcome: "LOSS",
+        fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+      },
+      // nothing for md-2 — already locked, blocked from picking after md-1
+    ];
+    const prisma = makeCountPrisma({
+      membership: {},
+      matchdays: [LOCKED_MATCHDAYS[0], LOCKED_MATCHDAYS[1]],
+      picks,
+    });
+    const service = new RecomputeService(prisma);
+
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(2);
+  });
+
+  it("does not count a matchday that hasn't locked yet", async () => {
+    const futureMatchdays = [LOCKED_MATCHDAYS[0], { id: "md-future", sequence: 2, lockAt: new Date("2099-01-01T00:00:00Z") }];
+    const picks: PickRow[] = [
+      {
+        id: "pick-1",
+        matchdayId: "md-1",
+        teamId: HOME,
+        outcome: "LOSS",
+        fixture: { id: "f1", homeTeamId: HOME, awayTeamId: AWAY, status: "FINISHED", result: "AWAY_WIN" },
+      },
+    ];
+    const prisma = makeCountPrisma({ membership: {}, matchdays: futureMatchdays, picks });
+    const service = new RecomputeService(prisma);
+
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(1);
+  });
+
+  it("returns zero for an unpaid member in a paymentRequired league", async () => {
+    const prisma = makeCountPrisma({
+      paymentRequired: true,
+      membership: { hasPaid: false, paidAt: null },
+      matchdays: LOCKED_MATCHDAYS,
+      picks: [],
+    });
+    const service = new RecomputeService(prisma);
+
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(0);
+  });
+
+  it("does not count a matchday that locked before the member joined", async () => {
+    const picks: PickRow[] = [];
+    const prisma = makeCountPrisma({
+      membership: { joinedAt: new Date("2020-01-15T00:00:00Z") }, // after md-1 locked, before md-2
+      matchdays: [LOCKED_MATCHDAYS[0], LOCKED_MATCHDAYS[1]],
+      picks,
+    });
+    const service = new RecomputeService(prisma);
+
+    // Only md-2 counts — md-1 locked before they were even eligible to play.
+    await expect(service.countQualifyingEliminationEvents("league-1", "user-1")).resolves.toBe(1);
   });
 });

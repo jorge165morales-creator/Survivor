@@ -361,8 +361,18 @@ export class LeaguesService {
     if (membership.buyBackUsed) {
       throw new ConflictException("This member has already used their buy-back this season");
     }
-
     if (!membership.buyBackAvailable) {
+      // Product rule: buy-back only ever works after exactly one qualifying
+      // elimination event — a second one (another real loss, or a matchday
+      // that locked with no pick because they were already shown-eliminated
+      // and blocked from picking) permanently voids it, so it must not even
+      // be offered. See RecomputeService.countQualifyingEliminationEvents.
+      const qualifyingEvents = await this.recompute.countQualifyingEliminationEvents(leagueId, targetUserId);
+      if (qualifyingEvents > 1) {
+        throw new BadRequestException(
+          "This member has more than one loss and is no longer eligible for a buy-back",
+        );
+      }
       await this.prisma.leagueMembership.update({
         where: { id: membership.id },
         data: { buyBackAvailable: true, buyBackGrantedAt: new Date() },
