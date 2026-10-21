@@ -65,7 +65,7 @@ export class PicksService {
   }
 
   async getPickOptions(leagueId: string, matchdayId: string, userId: string): Promise<PickOptionsResponse> {
-    await this.requireMembership(leagueId, userId);
+    const membership = await this.requireMembership(leagueId, userId);
 
     const matchday = await this.prisma.matchday.findUnique({
       where: { id: matchdayId },
@@ -75,7 +75,7 @@ export class PicksService {
       throw new NotFoundException("Matchday not found");
     }
 
-    const [usedTeams, currentPick, teamCount] = await Promise.all([
+    const [usedTeams, currentPick, teamCount, eliminatedAtMatchday] = await Promise.all([
       this.prisma.usedTeam.findMany({
         where: { leagueId, userId },
         include: {
@@ -84,9 +84,21 @@ export class PicksService {
       }),
       this.prisma.pick.findUnique({ where: { leagueId_userId_matchdayId: { leagueId, userId, matchdayId } } }),
       this.teamCountForSeason(matchday.seasonId),
+      membership.status === "ELIMINATED" && membership.eliminatedAtMatchdayId
+        ? this.prisma.matchday.findUnique({
+            where: { id: membership.eliminatedAtMatchdayId },
+            select: { sequence: true },
+          })
+        : null,
     ]);
     const currentCycle = cycleIndexForSequence(matchday.sequence, teamCount);
     const now = new Date();
+    // A pick for any matchday AFTER the one that actually eliminated this
+    // member is moot — it was only ever pre-submitted before they knew
+    // they were out, win/lose/locked or not. Hide it regardless of whether
+    // that matchday has since locked (the matchday that eliminated them
+    // still shows normally — that's the meaningful one).
+    const hideCurrentPick = !!eliminatedAtMatchday && matchday.sequence > eliminatedAtMatchday.sequence;
 
     return {
       matchdayId: matchday.id,
@@ -117,7 +129,10 @@ export class PicksService {
         // supersede (clear) that future pick instead. See submitPick.
         .filter((u) => !isSupersedableByEarlierPick(u.usedInPick.matchday, matchday.sequence, now))
         .map((u) => u.teamId),
-      currentPick: currentPick ? { teamId: currentPick.teamId, submittedAt: currentPick.submittedAt.toISOString() } : null,
+      currentPick:
+        currentPick && !hideCurrentPick
+          ? { teamId: currentPick.teamId, submittedAt: currentPick.submittedAt.toISOString() }
+          : null,
     };
   }
 

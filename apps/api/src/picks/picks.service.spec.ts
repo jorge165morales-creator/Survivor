@@ -19,13 +19,16 @@ interface UsedTeamRow {
 }
 
 function makePrisma(opts: {
-  membership?: { status: string } | null;
+  membership?: { status: string; eliminatedAtMatchdayId?: string | null } | null;
   paymentRequired?: boolean;
   hasPaid?: boolean;
   matchday: { id: string; seasonId?: string; sequence: number; lockAt: Date; fixtures?: unknown[] };
   teamCount: number;
   usedTeams?: UsedTeamRow[];
-  existingPick?: { id: string } | null;
+  existingPick?: { id: string; teamId?: string; submittedAt?: Date } | null;
+  // The sequence to resolve when getPickOptions looks up the matchday that
+  // actually eliminated this member (a different matchday than opts.matchday).
+  eliminatedAtMatchdaySequence?: number;
 }) {
   const usedTeam = {
     findMany: jest.fn().mockResolvedValue(opts.usedTeams ?? []),
@@ -52,7 +55,15 @@ function makePrisma(opts: {
       findUniqueOrThrow: jest.fn().mockResolvedValue({ paymentRequired: opts.paymentRequired ?? false }),
     },
     matchday: {
-      findUnique: jest.fn().mockResolvedValue({ seasonId: SEASON_ID, fixtures: [], ...opts.matchday }),
+      // Two different call shapes can target the same matchday id (viewing
+      // the very matchday that eliminated you) — discriminate by shape
+      // (select: only the eliminatedAtMatchday lookup uses that), not id.
+      findUnique: jest.fn().mockImplementation((args: { select?: unknown }) => {
+        if (args.select) {
+          return Promise.resolve({ sequence: opts.eliminatedAtMatchdaySequence });
+        }
+        return Promise.resolve({ seasonId: SEASON_ID, fixtures: [], ...opts.matchday });
+      }),
     },
     pick: {
       findUnique: jest.fn().mockResolvedValue(opts.existingPick ?? null),
@@ -151,6 +162,67 @@ describe("PicksService.getPickOptions", () => {
     const result = await service.getPickOptions(LEAGUE_ID, "md-25", USER_ID);
 
     expect(result.usedTeamIds).toEqual([]);
+  });
+
+  describe("hiding a pre-submitted pick for a matchday after this member's elimination", () => {
+    it("hides currentPick for a matchday AFTER the one that eliminated them, even if it's since locked", async () => {
+      const { prisma } = makePrisma({
+        membership: { status: "ELIMINATED", eliminatedAtMatchdayId: "md-2" },
+        matchday: { id: "md-3", sequence: 3, lockAt: new Date("2000-01-01T00:00:00Z") }, // already locked
+        teamCount: 20,
+        existingPick: { id: "pick-3", teamId: "team-y", submittedAt: new Date("2026-09-01T00:00:00Z") },
+        eliminatedAtMatchdaySequence: 2,
+      });
+      const service = new PicksService(prisma, makeRecompute());
+
+      const result = await service.getPickOptions(LEAGUE_ID, "md-3", USER_ID);
+
+      expect(result.currentPick).toBeNull();
+    });
+
+    it("still shows currentPick for the matchday that actually eliminated them", async () => {
+      const { prisma } = makePrisma({
+        membership: { status: "ELIMINATED", eliminatedAtMatchdayId: "md-2" },
+        matchday: { id: "md-2", sequence: 2, lockAt: new Date("2000-01-01T00:00:00Z") },
+        teamCount: 20,
+        existingPick: { id: "pick-2", teamId: "team-y", submittedAt: new Date("2026-09-01T00:00:00Z") },
+        eliminatedAtMatchdaySequence: 2,
+      });
+      const service = new PicksService(prisma, makeRecompute());
+
+      const result = await service.getPickOptions(LEAGUE_ID, "md-2", USER_ID);
+
+      expect(result.currentPick).toEqual({ teamId: "team-y", submittedAt: "2026-09-01T00:00:00.000Z" });
+    });
+
+    it("still shows currentPick for a matchday BEFORE the elimination point", async () => {
+      const { prisma } = makePrisma({
+        membership: { status: "ELIMINATED", eliminatedAtMatchdayId: "md-2" },
+        matchday: { id: "md-1", sequence: 1, lockAt: new Date("2000-01-01T00:00:00Z") },
+        teamCount: 20,
+        existingPick: { id: "pick-1", teamId: "team-x", submittedAt: new Date("2026-08-01T00:00:00Z") },
+        eliminatedAtMatchdaySequence: 2,
+      });
+      const service = new PicksService(prisma, makeRecompute());
+
+      const result = await service.getPickOptions(LEAGUE_ID, "md-1", USER_ID);
+
+      expect(result.currentPick).toEqual({ teamId: "team-x", submittedAt: "2026-08-01T00:00:00.000Z" });
+    });
+
+    it("does not hide anything for a member who's still ACTIVE", async () => {
+      const { prisma } = makePrisma({
+        membership: { status: "ACTIVE" },
+        matchday: { id: "md-3", sequence: 3, lockAt: new Date("2027-01-01T00:00:00Z") },
+        teamCount: 20,
+        existingPick: { id: "pick-3", teamId: "team-y", submittedAt: new Date("2026-09-01T00:00:00Z") },
+      });
+      const service = new PicksService(prisma, makeRecompute());
+
+      const result = await service.getPickOptions(LEAGUE_ID, "md-3", USER_ID);
+
+      expect(result.currentPick).toEqual({ teamId: "team-y", submittedAt: "2026-09-01T00:00:00.000Z" });
+    });
   });
 });
 
