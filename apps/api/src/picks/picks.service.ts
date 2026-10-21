@@ -12,6 +12,20 @@ import { validatePick, type PickRejectionReason } from "../game-engine/pick-vali
 import { cycleIndexForSequence } from "../game-engine/team-cycle";
 import { RecomputeService } from "../game-engine/recompute.service";
 
+// A team already claimed by a LATER matchday doesn't block an EARLIER one —
+// the earlier matchday wins, and submitPick clears (supersedes) that future
+// pick instead of rejecting the earlier one as TEAM_ALREADY_USED. Only
+// still-open future matchdays are supersedable: one that's already locked
+// has a real, resolved pick on record and must stay untouched, so a team
+// used there still blocks same as a past use would.
+function isSupersedableByEarlierPick(
+  usedMatchday: { sequence: number; lockAt: Date },
+  currentMatchdaySequence: number,
+  now: Date,
+): boolean {
+  return usedMatchday.sequence > currentMatchdaySequence && usedMatchday.lockAt > now;
+}
+
 function rejectionToException(reason: PickRejectionReason): Error {
   switch (reason) {
     case "ALREADY_ELIMINATED":
@@ -64,12 +78,15 @@ export class PicksService {
     const [usedTeams, currentPick, teamCount] = await Promise.all([
       this.prisma.usedTeam.findMany({
         where: { leagueId, userId },
-        include: { usedInPick: { select: { matchdayId: true, matchday: { select: { sequence: true } } } } },
+        include: {
+          usedInPick: { select: { matchdayId: true, matchday: { select: { sequence: true, lockAt: true } } } },
+        },
       }),
       this.prisma.pick.findUnique({ where: { leagueId_userId_matchdayId: { leagueId, userId, matchdayId } } }),
       this.teamCountForSeason(matchday.seasonId),
     ]);
     const currentCycle = cycleIndexForSequence(matchday.sequence, teamCount);
+    const now = new Date();
 
     return {
       matchdayId: matchday.id,
@@ -95,6 +112,10 @@ export class PicksService {
         // plays enough matchdays to complete one (e.g. the 17-matchday
         // Champions League), since every matchday is cycle 0 there.
         .filter((u) => cycleIndexForSequence(u.usedInPick.matchday.sequence, teamCount) === currentCycle)
+        // A team pre-claimed by a still-open LATER matchday shouldn't show
+        // as blocked here — picking it on this earlier matchday will
+        // supersede (clear) that future pick instead. See submitPick.
+        .filter((u) => !isSupersedableByEarlierPick(u.usedInPick.matchday, matchday.sequence, now))
         .map((u) => u.teamId),
       currentPick: currentPick ? { teamId: currentPick.teamId, submittedAt: currentPick.submittedAt.toISOString() } : null,
     };
@@ -132,6 +153,7 @@ export class PicksService {
 
     const teamCount = await this.teamCountForSeason(matchday.seasonId);
     const cycleIndex = cycleIndexForSequence(matchday.sequence, teamCount);
+    const now = new Date();
 
     // Scoped to the current cycle (see team-cycle.ts) — a team used in an
     // earlier, already-completed cycle doesn't block a repeat pick. A no-op
@@ -144,13 +166,27 @@ export class PicksService {
         cycleIndex,
         ...(existingPick ? { NOT: { usedInPickId: existingPick.id } } : {}),
       },
+      include: { usedInPick: { select: { id: true, matchday: { select: { sequence: true, lockAt: true } } } } },
     });
+
+    // An earlier matchday trumps a future pre-selection: if this team was
+    // only claimed by a still-open LATER matchday, that doesn't block this
+    // pick — instead that future pick gets cleared (superseded) below, once
+    // validation passes. See isSupersedableByEarlierPick.
+    const supersededFuturePick = usedTeamRows.find(
+      (u) => u.teamId === teamId && isSupersedableByEarlierPick(u.usedInPick.matchday, matchday.sequence, now),
+    );
+    const blockingTeamIds = new Set(
+      usedTeamRows
+        .filter((u) => !isSupersedableByEarlierPick(u.usedInPick.matchday, matchday.sequence, now))
+        .map((u) => u.teamId),
+    );
 
     const validation = validatePick({
       membershipStatus: membership.status,
       matchdayLockAt: matchday.lockAt,
-      now: new Date(),
-      usedTeamIdsExcludingCurrentMatchday: new Set(usedTeamRows.map((u) => u.teamId)),
+      now,
+      usedTeamIdsExcludingCurrentMatchday: blockingTeamIds,
       requestedTeamId: teamId,
     });
     if (!validation.ok) {
@@ -159,6 +195,16 @@ export class PicksService {
 
     try {
       const pick = await this.prisma.$transaction(async (tx) => {
+        if (supersededFuturePick) {
+          // Clear the future matchday's pick entirely — it goes back to no
+          // selection, not just "team removed" — rather than leave a ghost
+          // claim on a team that's now being used earlier instead. The
+          // UsedTeam row must go first: it has a RESTRICT foreign key onto
+          // Pick.
+          await tx.usedTeam.delete({ where: { id: supersededFuturePick.id } });
+          await tx.pick.delete({ where: { id: supersededFuturePick.usedInPick.id } });
+        }
+
         const pick = existingPick
           ? await tx.pick.update({
               where: { id: existingPick.id },

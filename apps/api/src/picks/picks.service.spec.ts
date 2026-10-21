@@ -12,9 +12,10 @@ function team(id: string) {
 }
 
 interface UsedTeamRow {
+  id?: string;
   teamId: string;
   cycleIndex: number;
-  usedInPick: { matchdayId: string; matchday: { sequence: number } };
+  usedInPick: { id?: string; matchdayId: string; matchday: { sequence: number; lockAt?: Date } };
 }
 
 function makePrisma(opts: {
@@ -30,12 +31,14 @@ function makePrisma(opts: {
     findMany: jest.fn().mockResolvedValue(opts.usedTeams ?? []),
     create: jest.fn().mockResolvedValue({}),
     update: jest.fn().mockResolvedValue({}),
+    delete: jest.fn().mockResolvedValue({}),
   };
   const pickUpdate = jest.fn().mockResolvedValue({ id: "pick-updated" });
   const pickCreate = jest.fn().mockResolvedValue({ id: "pick-created" });
+  const pickDelete = jest.fn().mockResolvedValue({});
 
   const tx = {
-    pick: { update: pickUpdate, create: pickCreate },
+    pick: { update: pickUpdate, create: pickCreate, delete: pickDelete },
     usedTeam,
   };
 
@@ -61,7 +64,7 @@ function makePrisma(opts: {
     $transaction: jest.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(tx)),
   } as unknown as PrismaService;
 
-  return { prisma, usedTeam, pickUpdate, pickCreate };
+  return { prisma, usedTeam, pickUpdate, pickCreate, pickDelete };
 }
 
 function makeRecompute() {
@@ -91,6 +94,46 @@ describe("PicksService.getPickOptions", () => {
     const service = new PicksService(prisma, makeRecompute());
 
     const result = await service.getPickOptions(LEAGUE_ID, "md-5", USER_ID);
+
+    expect(result.usedTeamIds).toEqual(["team-x"]);
+  });
+
+  it("excludes a team pre-claimed by a still-open LATER matchday — the earlier matchday trumps it", async () => {
+    const { prisma } = makePrisma({
+      matchday: { id: "md-2", sequence: 2, lockAt: new Date("2027-01-01T00:00:00Z") },
+      teamCount: 20,
+      usedTeams: [
+        {
+          teamId: "team-x",
+          cycleIndex: 0,
+          usedInPick: { matchdayId: "md-5", matchday: { sequence: 5, lockAt: new Date("2027-02-01T00:00:00Z") } },
+        },
+      ],
+    });
+    const service = new PicksService(prisma, makeRecompute());
+
+    const result = await service.getPickOptions(LEAGUE_ID, "md-2", USER_ID);
+
+    expect(result.usedTeamIds).toEqual([]);
+  });
+
+  it("still includes a team used by a LATER matchday that's already locked", async () => {
+    const { prisma } = makePrisma({
+      matchday: { id: "md-2", sequence: 2, lockAt: new Date("2027-06-01T00:00:00Z") },
+      teamCount: 20,
+      usedTeams: [
+        {
+          teamId: "team-x",
+          cycleIndex: 0,
+          // Higher sequence, but already locked — a resolved pick, not a
+          // supersedable pre-selection, so it still blocks normally.
+          usedInPick: { matchdayId: "md-5", matchday: { sequence: 5, lockAt: new Date("2000-01-01T00:00:00Z") } },
+        },
+      ],
+    });
+    const service = new PicksService(prisma, makeRecompute());
+
+    const result = await service.getPickOptions(LEAGUE_ID, "md-2", USER_ID);
 
     expect(result.usedTeamIds).toEqual(["team-x"]);
   });
@@ -128,6 +171,56 @@ describe("PicksService.submitPick", () => {
     const service = new PicksService(prisma, makeRecompute());
 
     await expect(service.submitPick(LEAGUE_ID, "md-5", USER_ID, "team-x")).rejects.toThrow(BadRequestException);
+  });
+
+  it("allows a team pre-claimed by a still-open LATER matchday, clearing that future pick", async () => {
+    const { prisma, usedTeam, pickDelete, pickCreate } = makePrisma({
+      matchday: matchdayWithFixture({ id: "md-2", sequence: 2, lockAt: new Date("2027-01-01T00:00:00Z") }),
+      teamCount: 20,
+      usedTeams: [
+        {
+          id: "used-team-future",
+          teamId: "team-x",
+          cycleIndex: 0,
+          usedInPick: {
+            id: "pick-future",
+            matchdayId: "md-5",
+            matchday: { sequence: 5, lockAt: new Date("2027-02-01T00:00:00Z") },
+          },
+        },
+      ],
+    });
+    const service = new PicksService(prisma, makeRecompute());
+
+    await service.submitPick(LEAGUE_ID, "md-2", USER_ID, "team-x");
+
+    // The future pick is cleared entirely — UsedTeam row first (RESTRICT FK
+    // onto Pick), then the Pick itself, so md-5 goes back to no selection.
+    expect(usedTeam.delete).toHaveBeenCalledWith({ where: { id: "used-team-future" } });
+    expect(pickDelete).toHaveBeenCalledWith({ where: { id: "pick-future" } });
+    expect(pickCreate).toHaveBeenCalled();
+  });
+
+  it("still rejects a team used by a LATER matchday that's already locked", async () => {
+    const { prisma } = makePrisma({
+      matchday: matchdayWithFixture({ id: "md-2", sequence: 2, lockAt: new Date("2027-06-01T00:00:00Z") }),
+      teamCount: 20,
+      usedTeams: [
+        {
+          id: "used-team-future",
+          teamId: "team-x",
+          cycleIndex: 0,
+          usedInPick: {
+            id: "pick-future",
+            matchdayId: "md-5",
+            matchday: { sequence: 5, lockAt: new Date("2000-01-01T00:00:00Z") },
+          },
+        },
+      ],
+    });
+    const service = new PicksService(prisma, makeRecompute());
+
+    await expect(service.submitPick(LEAGUE_ID, "md-2", USER_ID, "team-x")).rejects.toThrow(BadRequestException);
   });
 
   it("allows a team that was already used in an earlier, completed cycle", async () => {
