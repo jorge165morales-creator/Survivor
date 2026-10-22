@@ -18,7 +18,14 @@ import { useTheme } from '@/hooks/use-theme';
 const NAME_COL_WIDTH = 136;
 const CELL_COL_WIDTH = 60;
 const HEADER_ROW_HEIGHT = 40;
-const DATA_ROW_HEIGHT = 76;
+// Tall enough for the name column's worst case: name + username + status +
+// one more line (either "bought back in" or the commissioner's grant
+// button) — 4 lines at once. Shorter rows just end up with a little extra
+// breathing room; that's cheaper than the alternative of sizing each row
+// individually, which the name column and the horizontally-scrolling pick
+// grid (two separate ScrollViews kept in sync only by sharing this
+// constant) have no good way to agree on per row.
+const DATA_ROW_HEIGHT = 92;
 
 const ROUND_ABBREVIATIONS: Record<string, string> = {
   'Knockout Playoffs': 'KOP',
@@ -352,17 +359,24 @@ function GridCell({ cell, onPress }: { cell: StandingsGridCell | undefined; onPr
   const isLoss = cell.outcome === 'LOSS';
   const tint = isSurvived ? theme.success : isLoss ? theme.danger : theme.textSecondary;
 
+  // The outer cell always keeps the same fixed footprint as the "no pick"
+  // case above (that's what keeps every row's columns lined up with the
+  // header) — the colored/bordered pick box is a fixed-size child centered
+  // inside it, not a margin on the cell itself, so having a pick doesn't
+  // change how much horizontal space this column takes in its row.
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.cell, styles.pickCell, { backgroundColor: tint + '22', borderColor: tint }]}>
-      {cell.team.crestUrl && (
-        <Image source={{ uri: cell.team.crestUrl }} style={styles.crest} contentFit="contain" />
-      )}
-      <ThemedText type="small" style={[styles.pickCellText, { color: tint }]} numberOfLines={1}>
-        {cell.team.shortName}
-      </ThemedText>
-    </Pressable>
+    <View style={styles.cell}>
+      <Pressable
+        onPress={onPress}
+        style={[styles.pickCell, { backgroundColor: tint + '22', borderColor: tint }]}>
+        {cell.team.crestUrl && (
+          <Image source={{ uri: cell.team.crestUrl }} style={styles.crest} contentFit="contain" />
+        )}
+        <ThemedText type="small" style={[styles.pickCellText, { color: tint }]} numberOfLines={1}>
+          {cell.team.shortName}
+        </ThemedText>
+      </Pressable>
+    </View>
   );
 }
 
@@ -408,8 +422,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pickCell: {
-    margin: 3,
+    width: CELL_COL_WIDTH - 6,
     height: DATA_ROW_HEIGHT - 6,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
     gap: 2,
