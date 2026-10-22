@@ -266,7 +266,7 @@ export const en = {
     },
     buyBack: {
       title: 'Buy-back (if enabled by your admin)',
-      body: 'An admin can grant one eliminated member a single reinstatement per season. The used-up team from the loss still counts as used.',
+      body: "An admin can grant one eliminated member a single reinstatement per season — but only after exactly one loss (a missed pick counts as a loss). It's only available for the matchday right after that loss; miss that window and the option is gone for good, even if the admin didn't act in time. The used-up team from the loss still counts as used.",
     },
     tieBreak: {
       title: 'Tie-break: buy-back used',
@@ -526,7 +526,7 @@ export const es: typeof en = {
     },
     buyBack: {
       title: 'Recompra (si tu admin la habilita)',
-      body: 'Un admin puede otorgarle a un miembro eliminado un único reingreso por temporada. El equipo ya usado en la derrota sigue contando como usado.',
+      body: 'Un admin puede otorgarle a un miembro eliminado un único reingreso por temporada — pero solo después de exactamente una derrota (no elegir también cuenta como derrota). Solo está disponible para la jornada inmediatamente posterior a esa derrota; si se pasa esa ventana, la opción se pierde para siempre, incluso si el admin no actuó a tiempo. El equipo ya usado en la derrota sigue contando como usado.',
     },
     tieBreak: {
       title: 'Desempate: recompra usada',
