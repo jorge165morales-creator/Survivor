@@ -94,6 +94,7 @@ export class StandingsService {
     // always shows their own picks back to them.
     const now = new Date();
     const lockAtByMatchday = new Map(matchdays.map((m) => [m.id, m.lockAt]));
+    const sequenceByMatchdayId = new Map(matchdays.map((m) => [m.id, m.sequence]));
 
     const picksByUser = new Map<string, Map<string, (typeof picks)[number]>>();
     for (const pick of picks) {
@@ -112,11 +113,23 @@ export class StandingsService {
       .map((m) => {
         const userPicks = picksByUser.get(m.userId);
         const picksRecord: StandingsGridResponse["rows"][number]["picks"] = {};
+        const eliminatedAtSequence = m.eliminatedAtMatchday?.sequence ?? null;
         if (userPicks) {
           for (const [matchdayId, pick] of userPicks) {
             // submitPick always sets fixtureId to the matched fixture, so this
             // is just satisfying the schema's nullable relation, not a real case.
             if (!pick.fixture) continue;
+            // A pick for any matchday after the one that actually eliminated
+            // this member is moot — pre-submitted before they knew they were
+            // out. Hide it here too, same rule as getPickOptions, regardless
+            // of whether that matchday has since locked.
+            if (
+              m.status === "ELIMINATED" &&
+              eliminatedAtSequence !== null &&
+              sequenceByMatchdayId.get(matchdayId)! > eliminatedAtSequence
+            ) {
+              continue;
+            }
             picksRecord[matchdayId] = {
               team: {
                 id: pick.team.id,

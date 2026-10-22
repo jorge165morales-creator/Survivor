@@ -207,6 +207,60 @@ describe("StandingsService.getStandingsGrid", () => {
 
     expect(result.rows.map((r) => r.userId)).toEqual(["paid-up"]);
   });
+
+  it("hides an eliminated member's pick for a matchday after the one that eliminated them, even once it's locked", async () => {
+    prisma.leagueMembership.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    prisma.league.findUniqueOrThrow.mockResolvedValue({ id: "league-1", seasonId: "season-1" });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    prisma.matchday.findMany.mockResolvedValue([
+      { id: "md-1", sequence: 1, type: "GROUP", roundLabel: "Matchday 1", lockAt: past },
+      { id: "md-2", sequence: 2, type: "GROUP", roundLabel: "Matchday 2", lockAt: past },
+      { id: "md-3", sequence: 3, type: "GROUP", roundLabel: "Matchday 3", lockAt: past },
+    ]);
+    prisma.leagueMembership.findMany.mockResolvedValue([
+      {
+        userId: "viewer",
+        user: { displayName: "Viewer" },
+        status: "ACTIVE",
+        eliminatedAtMatchday: null,
+        buyBackAvailable: false,
+        buyBackUsed: false,
+      },
+      {
+        // Eliminated on matchday 2, but had pre-selected matchday 3 before
+        // going out — same shape as the josecgon / Survivor OG production case.
+        userId: "eliminated",
+        user: { displayName: "Eliminated" },
+        status: "ELIMINATED",
+        eliminatedAtMatchday: { sequence: 2 },
+        buyBackAvailable: false,
+        buyBackUsed: false,
+      },
+    ]);
+    const FIXTURE = {
+      id: "fixture-1",
+      homeTeam: TEAM_A,
+      awayTeam: TEAM_B,
+      kickoffAt: past,
+      status: "FINISHED",
+      homeScore: 1,
+      awayScore: 0,
+      result: "HOME_WIN",
+    };
+    prisma.pick.findMany.mockResolvedValue([
+      { userId: "eliminated", matchdayId: "md-2", team: TEAM_B, outcome: "LOSS", fixture: FIXTURE },
+      { userId: "eliminated", matchdayId: "md-3", team: TEAM_A, outcome: "PENDING", fixture: FIXTURE },
+    ]);
+
+    const result = await service.getStandingsGrid("league-1", "viewer");
+
+    const eliminatedRow = result.rows.find((r) => r.userId === "eliminated");
+    // The matchday they actually went out on still shows normally.
+    expect(eliminatedRow?.picks["md-2"]?.team.id).toBe(TEAM_B.id);
+    // But the moot pre-selection for a matchday after their elimination is hidden,
+    // even though it's long since locked.
+    expect(eliminatedRow?.picks["md-3"]).toBeUndefined();
+  });
 });
 
 describe("StandingsService.getStandings", () => {
